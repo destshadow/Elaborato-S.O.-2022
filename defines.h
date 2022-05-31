@@ -19,7 +19,7 @@
 
 key_t semkey; // da settare uguale al serben
 key_t shmkey; // shared memori var globale
-key_t msgkey;
+key_t msgKey;
 
 char *pathnameFIFO1 = "./fifo1";
 char *pathnameFIFO2 = "./fifo2";
@@ -31,16 +31,27 @@ char *USER;
 extern char **environ;
 
 struct message{
+    long mtype ; 
     pid_t pid_mittente;
     char *nome_file;
+    int num_parte;
     char *parte_da_inviare;
 };
 
+struct terminato{
+    long mtype ; 
+    char *text;
+}
+        
 char *parti = {"", "", "", ""};
 
 typedef struct message message_t;
 
+
 int ChangeDirAndGetEntry(char *, char *);
-void divisione_parti(int, message_t *, int);
-void sigHandler(int );
-void CambiaMaschera();
+void divisione_parti(int, char *, int);
+void inserimento_messaggio(message_t *messaggio, int n, message_t **messaggi, int num_file, int c[4]);
+int  posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi, int c[]);
+void stampa_su_file ( int r , int count , message_t **messaggi);
+char * scrivi(int r , int k , message_t **messaggi);
+void ControllaCartelle();
