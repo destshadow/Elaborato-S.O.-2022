@@ -3,6 +3,16 @@
 
 #include "defines.h"
 
+#define  semkey  // da settare uguale al serben
+#define  shmkey  // shared memori var globale
+#define  msgKey 
+
+#define pathnameFIFO1 "./fifo10"
+#define pathnameFIFO2 "./fifo20"
+#define semkey 1 // da settare uguale al serben
+#define shmkey 2 // shared memori var globale
+#define msgKey 3
+
 sigset_t prevSet;
 
 void sigHandler(int sig){
@@ -13,7 +23,7 @@ void sigHandler(int sig){
     
     if(sig == SIGINT ){
         if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1) // serve per controllare se va in errore la maschera
-            errExit("Errore nel settare la maschera");
+            ErrExit("Errore nel settare la maschera");
     }
 }
 
@@ -22,8 +32,10 @@ int main(int argc, char * argv[]) {
     char *nomi;
     char *caratteri;
 
+    nomi = malloc(4 * sizeof(char));
+    
     if(argc <= 1){
-        printf("Errore non hai passato un path\n");
+        printf("Errore non hai passato un path");
         return 0;
     }
 
@@ -34,49 +46,49 @@ int main(int argc, char * argv[]) {
     
     //inizializzo mySet con tutti i segnali
     if(sigfillset(&mySet) == -1)
-       errExit("maschera non creata");
+       ErrExit("maschera non creata");
 
     // rimuovo tutti i segnali tranne SIGINT e SIGUSR1
     if(sigdelset(&mySet, SIGINT) == -1 ){
-        errExit("Errore nel settare singint\n");
+        ErrExit("Errore nel settare singint");
     }
 
     if(sigdelset(&mySet, SIGUSR1) == -1){
-        errExit("Errore nel settare sigusr1\n");
+        ErrExit("Errore nel settare sigusr1");
     }
 
     //blocco tutti i segnali alla maschera my_set
     if(sigprocmask( SIG_SETMASK, &mySet, &prevSet) == -1)
-       errExit("Errore nel settare la maschera") ;
+       ErrExit("Errore nel settare la maschera") ;
 
     if (signal(SIGINT, sigHandler) == SIG_ERR ||
         signal(SIGUSR1, sigHandler) == SIG_ERR) {
         
-        errExit("change signal handler failed\n");
+        ErrExit("change signal handler failed");
     }
 
     ControllaCartelle();
 
-    int count = ChangeDirAndGetName(PathToSet, nomi);
+    int count = ChangeDirAndGetEntry(PathToSet, nomi);
     
     int FIFO1id = open(pathnameFIFO1, O_WRONLY);
 
     if(FIFO1id == -1)
-       errExit("errore apertura FIFO1");
+       ErrExit("errore apertura FIFO1");
     
     int FIFO2id = open(pathnameFIFO2, O_WRONLY);
 
     if(FIFO2id == -1)
-       errExit("errore apertura FIFO1");
+       ErrExit("errore apertura FIFO1");
     
     int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
     if (mesgid == -1)
-        errExit("msgget failed");
+        ErrExit("msgget failed");
         
     int shmid = alloc_shared_memory(shmkey, 4096);
 
     if (write(FIFO1id, count, sizeof(count)) != sizeof(count)){
-        errExit("write failed");
+        ErrExit("write failed");
     }
     
     int sem = semget(semkey, 2, S_IRUSR | S_IWUSR);
@@ -91,7 +103,7 @@ int main(int argc, char * argv[]) {
     
     int semid = semget(IPC_PRIVATE, count, S_IRUSR | S_IWUSR);
     if (semid == -1)
-        errExit("semget failed");
+        ErrExit("semget failed");
 
     // Initialize the semaphore set
     unsigned short semVal[] = {1}; // inizializzo il set di semafori parzialmente così i restanti vengono settati a 0 
@@ -99,7 +111,7 @@ int main(int argc, char * argv[]) {
     arg.array = &semVal;
 
     if (semctl(semid, 0 /*ignored*/, SETALL, arg) == -1)
-        errExit("semctl SETALL failed");
+        ErrExit("semctl SETALL failed");
 
 
     for(int i = 0; i < count; i++){
@@ -107,22 +119,22 @@ int main(int argc, char * argv[]) {
 
         pid_t pid = fork();
         if(pid == -1)
-            errExit("errore fork");
+            ErrExit("errore fork");
         
         if(pid==0){
         
             message_t *messaggio;
-            char parti[4];
             
-            int fd = open( nomi[i], O_RDONLY);
+            
+            int fd = open( &nomi[i], O_RDONLY);
 
             if(fd == -1 )
-                errEXit("errore nell'apertura del file");
+                ErrExit("errore nell'apertura del file");
 
             ssize_t numChar = read(fd, caratteri, 4096);
 
             if(numChar == -1)
-                errExit("errore lettura caratteri");
+                ErrExit("errore lettura caratteri");
 
             divisione_parti(numChar , parti, fd);
             semOp(semid, (unsigned short)i, -1);
@@ -131,7 +143,7 @@ int main(int argc, char * argv[]) {
                 semOp(semid, (unsigned short)  i+1 , 1); //sblocco prossimo semaforo
             else 
                 if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1) //se sono in fondo (non ho piu figli) tolgo il set dei semfori a tutti per sbloccarli
-                    errExit("semctl IPC_RMID failed");
+                    ErrExit("semctl IPC_RMID failed");
                     
             int semafori = semget(sem, 4, S_IRUSR | S_IWUSR);
                     
@@ -141,20 +153,20 @@ int main(int argc, char * argv[]) {
                 messaggio-> pid_mittente = getpid();
                 messaggio-> nome_file = nomi[i]; 
                 messaggio-> num_parte = k ;
-                messaggio -> parte_da_inviare = parti[k] ; 
+                messaggio -> parte_da_inviare = &parti[k] ; 
                 
                 switch (k) {
                 
                     case 0 : 
                             if (write(FIFO1id, messaggio, sizeof(messaggio)) != sizeof(messaggio)){
-                                errExit("write failed");
+                                ErrExit("write failed");
                             } 
                             semOp(semafori, 0 , -1);  
                             break ;
                     
                     case 1 :
                             if (write(FIFO2id, messaggio, sizeof(messaggio)) != sizeof(messaggio)){
-                                errExit("write failed");
+                                ErrExit("write failed");
                             }
                             semOp(semafori, 1 , -1);
                             
@@ -170,11 +182,11 @@ int main(int argc, char * argv[]) {
                             messaggio -> mtype = 1 ; 
                             size_t mSize = sizeof(message_t) - sizeof(long);
                             if(msgsnd(mesgid , &messaggio , mSize , 0) == -1)
-                                errExit("msgsnd failed");
+                                ErrExit("msgsnd failed");
                             semOp(semafori , 3, -1);
                         break ;
                     default:
-                            errExit("qualcosa è andato storto nello switch");
+                            ErrExit("qualcosa è andato storto nello switch");
                         break;
                 }
             }
@@ -189,7 +201,7 @@ int main(int argc, char * argv[]) {
 
     size_t size = sizeof(termina) - sizeof(long);
     if ( msgrcv(mesgid, &termina, size, 0 ) == -1)
-        errExit("errore invio mesage_queue");
+       ErrExit("messaggio non ricevuto");
   
    //deve ritornare a settare la maschera 
 }
