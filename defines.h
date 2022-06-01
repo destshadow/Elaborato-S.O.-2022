@@ -41,7 +41,7 @@ struct message{
 struct terminato{
     long mtype ; 
     char *text;
-}
+};
         
 char *parti = {"", "", "", ""};
 
