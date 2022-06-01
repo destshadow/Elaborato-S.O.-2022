@@ -39,7 +39,6 @@ struct terminato{
 
 typedef struct message message_t;
 
-
 int ChangeDirAndGetEntry(char *, char *);
 void divisione_parti(int, char *, int);
 void inserimento_messaggio(message_t *messaggio, int n, message_t **messaggi, int num_file, int c[4]);
