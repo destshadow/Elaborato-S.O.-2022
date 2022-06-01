@@ -36,8 +36,6 @@ struct terminato{
     long mtype ; 
     char *text;
 };
-        
-char *parti ;
 
 typedef struct message message_t;
 

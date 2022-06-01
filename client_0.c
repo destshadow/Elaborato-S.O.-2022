@@ -3,12 +3,9 @@
 
 #include "defines.h"
 
-#define  semkey  // da settare uguale al serben
-#define  shmkey  // shared memori var globale
-#define  msgKey 
-
 #define pathnameFIFO1 "./fifo10"
 #define pathnameFIFO2 "./fifo20"
+
 #define semkey 1 // da settare uguale al serben
 #define shmkey 2 // shared memori var globale
 #define msgKey 3
@@ -31,6 +28,7 @@ int main(int argc, char * argv[]) {
 
     char *nomi;
     char *caratteri;
+    char *parti = {"", "", "", ""};
 
     nomi = malloc(4 * sizeof(char));
     
