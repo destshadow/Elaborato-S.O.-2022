@@ -36,8 +36,11 @@ struct terminato{
     long mtype ; 
     char *text;
 };
+        
+char *parti ;
 
 typedef struct message message_t;
+
 
 int ChangeDirAndGetEntry(char *, char *);
 void divisione_parti(int, char *, int);

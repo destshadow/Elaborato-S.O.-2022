@@ -25,7 +25,7 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
 
 
     if(chdir(s) == -1){
-        ErrExit("Errore nel cambio directory");
+        ErrExit("Errore nel cambio directory\n");
         return -1;
     }
 
@@ -36,6 +36,7 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
     }
 
     printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", USER, PWD);
+
 
     struct stat *statbuf;
 
@@ -48,13 +49,13 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
             if (dentry->d_type == DT_REG)
                 printf("Regular file: %s\n", dentry->d_name);
             
-            if(stat(dentry->d_name, statbuf) == -1){
+            if(stat(dentry -> d_name , statbuf) == -1){
                 ErrExit("errore nello stat");
                 return -1;
             }
             if (statbuf->st_size < 4096){
-                if(memcmp (dentry->d_name , "sendme_", 7 ) == 0 ){
-                    nomi[count] = (char *)statbuf -> st_ino;
+                if(memcmp (dentry ->d_name , "sendme_", 7 ) == 0 ){
+                    nomi[count] = (char *)dentry ->d_name ;
                     count ++ ; 
                 }
             } 
@@ -208,10 +209,4 @@ void ControllaCartelle(){
     if(open(pathnameFIFO2, O_EXCL | O_CREAT | O_TRUNC | O_RDWR) == -1){
         ErrExit("cartella fifo1 non creata");
     }
-}
-
-char *LeggiPath(){
-    char **it = environ;
-
-    return *(it + 1);
 }

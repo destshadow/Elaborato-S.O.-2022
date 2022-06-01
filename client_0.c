@@ -3,9 +3,12 @@
 
 #include "defines.h"
 
+#define  semkey  // da settare uguale al serben
+#define  shmkey  // shared memori var globale
+#define  msgKey 
+
 #define pathnameFIFO1 "./fifo10"
 #define pathnameFIFO2 "./fifo20"
-
 #define semkey 1 // da settare uguale al serben
 #define shmkey 2 // shared memori var globale
 #define msgKey 3
@@ -28,12 +31,11 @@ int main(int argc, char * argv[]) {
 
     char *nomi;
     char *caratteri;
-    char *parti = {"", "", "", ""};
 
     nomi = malloc(4 * sizeof(char));
     
     if(argc <= 1){
-        printf("Errore non hai passato un path");
+        printf("Errore non hai passato un path\n");
         return 0;
     }
 
@@ -48,11 +50,11 @@ int main(int argc, char * argv[]) {
 
     // rimuovo tutti i segnali tranne SIGINT e SIGUSR1
     if(sigdelset(&mySet, SIGINT) == -1 ){
-        ErrExit("Errore nel settare singint");
+        ErrExit("Errore nel settare singint\n");
     }
 
     if(sigdelset(&mySet, SIGUSR1) == -1){
-        ErrExit("Errore nel settare sigusr1");
+        ErrExit("Errore nel settare sigusr1\n");
     }
 
     //blocco tutti i segnali alla maschera my_set
@@ -62,7 +64,7 @@ int main(int argc, char * argv[]) {
     if (signal(SIGINT, sigHandler) == SIG_ERR ||
         signal(SIGUSR1, sigHandler) == SIG_ERR) {
         
-        ErrExit("change signal handler failed");
+        ErrExit("change signal handler failed\n");
     }
 
     ControllaCartelle();
