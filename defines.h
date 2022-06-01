@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdlib.h>
@@ -11,18 +12,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
-#include <fifo.h>
+#include "fifo.h"
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include "semaphore.h"
 #include <sys/stat.h>
-
-key_t semkey; // da settare uguale al serben
-key_t shmkey; // shared memori var globale
-key_t msgKey;
-
-char *pathnameFIFO1 = "./fifo1";
-char *pathnameFIFO2 = "./fifo2";
 
 char *HOME;
 char *PWD;
@@ -43,7 +37,7 @@ struct terminato{
     char *text;
 };
         
-char *parti = {"", "", "", ""};
+char *parti ;
 
 typedef struct message message_t;
 

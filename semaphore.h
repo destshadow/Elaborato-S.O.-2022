@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
-#include <fifo.h>
+#include "fifo.h"
 #include <sys/ipc.h>
 #include <sys/sem.h>
 

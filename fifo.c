@@ -7,5 +7,5 @@
 
 void rimozione_fifo(int id){
    if(close(id)==-1)
-      erreExit("chiusura fifo non è andata a buon fine");
+      ErrExit("chiusura fifo non è andata a buon fine");
 }

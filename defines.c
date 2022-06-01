@@ -3,13 +3,21 @@
 ///         specifiche del progetto.
 
 #include "defines.h"
+#include "err_exit.h"
+
+#define  semkey // da settare uguale al serben
+#define  shmkey // shared memori var globale
+#define  msgKey 
+
+#define pathnameFIFO1 "./fifo10"
+#define pathnameFIFO2 "./fifo20"
 
 int ChangeDirAndGetEntry(char *s, char nomi[]){
     DIR *directory;
     struct dirent *dentry;
     int count = 0;
 
-    char *it = environ;
+    char **it = environ;
 
     HOME = *it;
     PWD = *(it + 1);
@@ -17,7 +25,7 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
 
 
     if(chdir(s) == -1){
-        errExit("Errore nel cambio directory\n");
+        ErrExit("Errore nel cambio directory");
         return -1;
     }
 
@@ -29,10 +37,9 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
 
     printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", USER, PWD);
 
-
     struct stat *statbuf;
 
-    while ((dentry = readdir(directory) != NULL)){
+    while ((dentry = readdir(directory)) != NULL){
          
         if (strcmp(dentry->d_name, ".") == 0 ||
             strcmp(dentry->d_name, "..") == 0){ 
@@ -41,13 +48,13 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
             if (dentry->d_type == DT_REG)
                 printf("Regular file: %s\n", dentry->d_name);
             
-            if(stat(dentry -> d_name , &statbuf) == -1){
-                errExit("errore nello stat");
+            if(stat(dentry->d_name, statbuf) == -1){
+                ErrExit("errore nello stat");
                 return -1;
             }
             if (statbuf->st_size < 4096){
-                if(memcmp (dentry ->d_name , "sendme_", 7 ) == 0 ){
-                    nomi[count] = dentry ->d_name ;
+                if(memcmp (dentry->d_name , "sendme_", 7 ) == 0 ){
+                    nomi[count] = (char *)statbuf -> st_ino;
                     count ++ ; 
                 }
             } 
@@ -55,28 +62,28 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
     }
 
     if(count <= 0 || count > 100 ){
-        errEXit("File non trovati o ci sono più di 100 file ");
+        ErrExit("File non trovati o ci sono più di 100 file ");
         return -1;
     }
 
-    close(directory);
+    closedir(directory);
     return count; //sarebbe il numero di file da inviare
 
 }
 
 //((myint+3)/4)*4
 
-void divisione_parti(int d, char parti[] , int fd ){
+void divisione_parti(int d, char *parti , int fd ){
 
     d = ((d+3)/4)*4;
    
     for(int i = 0 ; i< 4 ; i++){
 
         off_t offset = lseek(fd, (int) i*(d/4) , SEEK_SET);
-        ssize_t caratteri_letti = read(fd, parti[i] , (int)d/4 );
+        ssize_t caratteri_letti = read(fd, &parti[i] , (int)d/4 );
 
         if(caratteri_letti == -1){ 
-            errExit("errore lettura %d caratteri" , d);
+            ErrExit("errore lettura caratteri");
         }
     }
 }
@@ -137,11 +144,11 @@ void stampa_su_file ( int r , int count , message_t **messaggi){
           
             char *buffer = scrivi(r, k, messaggi); 
             ssize_t numWrite = write(fd, buffer,sizeof(buffer));
-            if(numWrite != sizeof(buffer));
-                errExit("write failed");
+            if(numWrite != sizeof(buffer))
+                ErrExit("write failed");
         }
         if(close(fd) == -1)
-            errExit("chiusura file non riuscita");
+            ErrExit("chiusura file non riuscita");
     }
 }
       
@@ -149,7 +156,7 @@ char * scrivi(int r , int k , message_t **messaggi){
       
     char *a_capo = "\n";
       
-    char *buffer ;
+    char *buffer = "";
     sprintf(buffer, "%d", (messaggi[r][k].num_parte +1)  ); 
       
     char *parte = strcat("[Parte " , buffer);
@@ -194,10 +201,17 @@ char * scrivi(int r , int k , message_t **messaggi){
 }
 
 void ControllaCartelle(){
-    if(open(pathnameFIFO1, O_CREAT | O_TRUNC | O_RDWR) == -1){
-        errEXit("cartella fifo1 non creata");
+    if(open(pathnameFIFO1, O_EXCL | O_CREAT | O_TRUNC | O_RDWR) == -1){
+        ErrExit("cartella fifo1 non creata");
     }
-    if(open(pathnameFIFO2, O_CREAT | O_TRUNC | O_RDWR) == -1){
-        errEXit("cartella fifo1 non creata");
+    
+    if(open(pathnameFIFO2, O_EXCL | O_CREAT | O_TRUNC | O_RDWR) == -1){
+        ErrExit("cartella fifo1 non creata");
     }
+}
+
+char *LeggiPath(){
+    char **it = environ;
+
+    return *(it + 1);
 }
