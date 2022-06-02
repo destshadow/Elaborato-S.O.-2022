@@ -117,11 +117,13 @@ int posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi, 
                 messaggi[r][messaggio->num_parte].parte_da_inviare = messaggio->parte_da_inviare ;
                 c[r]++;
 
-                if(c[r]==4) 
+                if(c[r]==4){
                     return r; //riga a cui si riferisce
+                }
             break;
-        }else 
-            return -1 ;  
+        }else{
+            return -1;
+        }
     }
 }
       
@@ -140,8 +142,9 @@ void stampa_su_file ( int r , int count , message_t **messaggi){
             if(numWrite != sizeof(buffer))
                 ErrExit("write failed");
         }
-        if(close(fd) == -1)
+        if(close(fd) == -1){
             ErrExit("chiusura file non riuscita");
+        }
     }
 }
       

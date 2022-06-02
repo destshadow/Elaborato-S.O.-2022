@@ -56,8 +56,9 @@ int main(int argc, char * argv[]) {
     }
 
     //blocco tutti i segnali alla maschera my_set
-    if(sigprocmask( SIG_SETMASK, &mySet, &prevSet) == -1)
-       ErrExit("Errore nel settare la maschera") ;
+    if(sigprocmask( SIG_SETMASK, &mySet, &prevSet) == -1){
+       ErrExit("Errore nel settare la maschera");
+    }
 
     if (signal(SIGINT, sigHandler) == SIG_ERR ||
         signal(SIGUSR1, sigHandler) == SIG_ERR) {
@@ -108,16 +109,18 @@ int main(int argc, char * argv[]) {
     union semun arg;
     arg.array = &semVal;
 
-    if (semctl(semid, 0 /*ignored*/, SETALL, arg) == -1)
+    if (semctl(semid, 0 /*ignored*/, SETALL, arg) == -1){
         ErrExit("semctl SETALL failed");
+    }
 
 
     for(int i = 0; i < count; i++){
         //fork per ogni dato;
 
         pid_t pid = fork();
-        if(pid == -1)
+        if(pid == -1){
             ErrExit("errore fork");
+        }
         
         if(pid==0){
         
@@ -126,23 +129,25 @@ int main(int argc, char * argv[]) {
             
             int fd = open( &nomi[i], O_RDONLY);
 
-            if(fd == -1 )
+            if(fd == -1 ){
                 ErrExit("errore nell'apertura del file");
-
+            }
             ssize_t numChar = read(fd, caratteri, 4096);
 
-            if(numChar == -1)
+            if(numChar == -1){
                 ErrExit("errore lettura caratteri");
-            
+            }
+
             divisione_parti(numChar , parti, fd);
             semOp(semid, (unsigned short)i, -1);
            
-            if(i+1 < count)
+            if(i+1 < count){
                 semOp(semid, (unsigned short)  i+1 , 1); //sblocco prossimo semaforo
-            else 
-                if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1) //se sono in fondo (non ho piu figli) tolgo il set dei semfori a tutti per sbloccarli
+            }else{ 
+                if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1){ //se sono in fondo (non ho piu figli) tolgo il set dei semfori a tutti per sbloccarli
                     ErrExit("semctl IPC_RMID failed");
-                    
+                }
+            }  
             int semafori = semget(sem, 4, S_IRUSR | S_IWUSR);
                     
             for(int k = 0 ; k<4 ; k++){
@@ -179,8 +184,9 @@ int main(int argc, char * argv[]) {
                     case 3: 
                             messaggio -> mtype = 1 ; 
                             size_t mSize = sizeof(message_t) - sizeof(long);
-                            if(msgsnd(mesgid , &messaggio , mSize , 0) == -1)
+                            if(msgsnd(mesgid , &messaggio , mSize , 0) == -1){
                                 ErrExit("msgsnd failed");
+                            }
                             semOp(semafori , 3, -1);
                         break ;
                     default:
@@ -198,8 +204,8 @@ int main(int argc, char * argv[]) {
     struct terminato termina;
 
     size_t size = sizeof(termina) - sizeof(long);
-    if ( msgrcv(mesgid, &termina, size, 0 ) == -1)
-       ErrExit("messaggio non ricevuto");
-  
+    if ( msgrcv(mesgid, &termina, size, 0 ) == -1){
+        ErrExit("messaggio non ricevuto");
+    }
    //deve ritornare a settare la maschera 
 }
