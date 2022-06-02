@@ -38,10 +38,6 @@ int main(int argc, char * argv[]) {
 
     char *PathToSet = argv[1]; //chdir(PathToSet);
 
-    printf("%s\n",GetSpecificPathEntry(1));
-    printf("%s\n",GetSpecificPathEntry(2));
-    printf("%s\n",GetSpecificPathEntry(3));
-    
     // cambio maschera 
     sigset_t mySet;
     
