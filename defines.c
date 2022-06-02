@@ -232,13 +232,14 @@ char *GetSpecificPathEntry(int a){
             HOME = *it;
         }
 
+        if(strncmp(s, "USER", strlen("USER")) == 0){
+            USER = *it;
+        }
+
         if(strncmp(s, "USERNAME", strlen("USERNAME")) == 0){
             USER = *it;
         }
 
-        if(strncmp(s, "USER", strlen("USER")) == 0){
-            USER = *it;
-        }
     }
 
 
