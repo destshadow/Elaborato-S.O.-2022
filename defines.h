@@ -17,12 +17,7 @@
 #include <sys/sem.h>
 #include "semaphore.h"
 #include <sys/stat.h>
-
-char *HOME;
-char *PWD;
-char *USER;
-
-extern char **environ;
+#include <string.h>
 
 struct message{
     long mtype ; 
@@ -37,7 +32,7 @@ struct terminato{
     char *text;
 };
         
-char *parti ;
+char *parti;
 
 typedef struct message message_t;
 
@@ -49,3 +44,4 @@ int  posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi,
 void stampa_su_file ( int r , int count , message_t **messaggi);
 char * scrivi(int r , int k , message_t **messaggi);
 void ControllaCartelle();
+char * GetSpecificPathEntry(int );

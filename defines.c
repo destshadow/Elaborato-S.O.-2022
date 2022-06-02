@@ -17,15 +17,8 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
     struct dirent *dentry;
     int count = 0;
 
-    char **it = environ;
-
-    HOME = *it;
-    PWD = *(it + 1);
-    USER = *(it + 2);
-
-
     if(chdir(s) == -1){
-        ErrExit("Errore nel cambio directory\n");
+        ErrExit("Errore nel cambio directory");
         return -1;
     }
 
@@ -35,8 +28,7 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
         return -1;
     }
 
-    printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", USER, PWD);
-
+    printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", GetSpecificPathEntry(3), GetSpecificPathEntry(2));
 
     struct stat *statbuf;
 
@@ -49,13 +41,13 @@ int ChangeDirAndGetEntry(char *s, char nomi[]){
             if (dentry->d_type == DT_REG)
                 printf("Regular file: %s\n", dentry->d_name);
             
-            if(stat(dentry -> d_name , statbuf) == -1){
+            if(stat(dentry->d_name, statbuf) == -1){
                 ErrExit("errore nello stat");
                 return -1;
             }
             if (statbuf->st_size < 4096){
-                if(memcmp (dentry ->d_name , "sendme_", 7 ) == 0 ){
-                    nomi[count] = (char *)dentry ->d_name ;
+                if(memcmp (dentry->d_name , "sendme_", 7 ) == 0 ){
+                    nomi[count] = (char *)statbuf -> st_ino;
                     count ++ ; 
                 }
             } 
@@ -209,4 +201,55 @@ void ControllaCartelle(){
     if(open(pathnameFIFO2, O_EXCL | O_CREAT | O_TRUNC | O_RDWR) == -1){
         ErrExit("cartella fifo1 non creata");
     }
+}
+
+char *GetSpecificPathEntry(int a){
+
+    char *HOME;
+    char *PWD;
+    char *USER;
+    char *s;
+
+    extern char **environ;
+    char **it = environ;
+
+    /*HOME = *it;
+    PWD = *(it + 1);
+    USER = *(it + 2);*/
+
+    for (char **it = environ; (*it) != NULL; ++it) {
+        s = *it;
+        //printf("--> %s\n", s);
+        
+        if(strncmp(s,"PWD", 3) == 0){
+            PWD = *it;
+        }
+
+        if(strncmp(s, "HOME", 4) == 0){
+            HOME = *it;
+        }
+
+        if(strncmp(s, "USERNAME", strlen("USERNAME")) == 0){
+            USER = *it;
+        }
+
+        if(strncmp(s, "USER", strlen("USER")) == 0){
+            USER = *it;
+        }
+    }
+
+
+    if(a == 1){
+        return HOME;
+    }
+
+    if(a == 2){
+        return PWD;
+    }
+    
+    if(a == 3){
+        return USER;
+    }
+
+    return "Errore";
 }

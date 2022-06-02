@@ -3,12 +3,9 @@
 
 #include "defines.h"
 
-#define  semkey  // da settare uguale al serben
-#define  shmkey  // shared memori var globale
-#define  msgKey 
-
 #define pathnameFIFO1 "./fifo10"
 #define pathnameFIFO2 "./fifo20"
+
 #define semkey 1 // da settare uguale al serben
 #define shmkey 2 // shared memori var globale
 #define msgKey 3
@@ -41,6 +38,10 @@ int main(int argc, char * argv[]) {
 
     char *PathToSet = argv[1]; //chdir(PathToSet);
 
+    printf("%s\n",GetSpecificPathEntry(1));
+    printf("%s\n",GetSpecificPathEntry(2));
+    printf("%s\n",GetSpecificPathEntry(3));
+    
     // cambio maschera 
     sigset_t mySet;
     
@@ -50,11 +51,11 @@ int main(int argc, char * argv[]) {
 
     // rimuovo tutti i segnali tranne SIGINT e SIGUSR1
     if(sigdelset(&mySet, SIGINT) == -1 ){
-        ErrExit("Errore nel settare singint\n");
+        ErrExit("Errore nel settare singint");
     }
 
     if(sigdelset(&mySet, SIGUSR1) == -1){
-        ErrExit("Errore nel settare sigusr1\n");
+        ErrExit("Errore nel settare sigusr1");
     }
 
     //blocco tutti i segnali alla maschera my_set
@@ -64,7 +65,7 @@ int main(int argc, char * argv[]) {
     if (signal(SIGINT, sigHandler) == SIG_ERR ||
         signal(SIGUSR1, sigHandler) == SIG_ERR) {
         
-        ErrExit("change signal handler failed\n");
+        ErrExit("change signal handler failed");
     }
 
     ControllaCartelle();
@@ -135,7 +136,7 @@ int main(int argc, char * argv[]) {
 
             if(numChar == -1)
                 ErrExit("errore lettura caratteri");
-
+            
             divisione_parti(numChar , parti, fd);
             semOp(semid, (unsigned short)i, -1);
            
