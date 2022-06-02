@@ -42,8 +42,9 @@ int main(int argc, char * argv[]) {
     sigset_t mySet;
     
     //inizializzo mySet con tutti i segnali
-    if(sigfillset(&mySet) == -1)
-       ErrExit("maschera non creata");
+    if(sigfillset(&mySet) == -1){
+        ErrExit("maschera non creata");
+    }
 
     // rimuovo tutti i segnali tranne SIGINT e SIGUSR1
     if(sigdelset(&mySet, SIGINT) == -1 ){
