@@ -45,4 +45,4 @@ int  posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi,
 void stampa_su_file ( int r , int count , message_t **messaggi);
 char * scrivi(int r , int k , message_t **messaggi);
 void ControllaCartelle();
-char * GetSpecificPathEntry(int );
+//char * GetSpecificPathEntry(int );

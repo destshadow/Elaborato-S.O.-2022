@@ -114,7 +114,7 @@ void divisione_parti(int d, char *parti , int fd ){
 void inserimento_messaggio(message_t *messaggio, int n, message_t **messaggi, int num_file, int c[4]){
 
     int g = posiziona_messaggio(messaggio, n, messaggi, c); //positivo se ha tutte e 4 le parti del file
-      
+
     if(g>0){
         stampa_su_file(g, n, messaggi);
         num_file++;
@@ -236,7 +236,7 @@ void ControllaCartelle(){
     }
 }
 
-char *GetSpecificPathEntry(int a){
+/*char *GetSpecificPathEntry(int a){
 
     char *HOME;
     char *PWD;
@@ -246,9 +246,9 @@ char *GetSpecificPathEntry(int a){
     extern char **environ;
     char **it = environ;
 
-    /*HOME = *it;
-    PWD = *(it + 1);
-    USER = *(it + 2);*/
+    //HOME = *it;
+    //PWD = *(it + 1);
+    //USER = *(it + 2);
 
     for (char **it = environ; (*it) != NULL; ++it) {
         s = *it;
@@ -290,4 +290,4 @@ char *GetSpecificPathEntry(int a){
     }
 
     return "Errore";
-}
+}*/
