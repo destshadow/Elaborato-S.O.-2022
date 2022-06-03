@@ -15,7 +15,7 @@
 #define pathnameFIFO1 "./fifo10"
 #define pathnameFIFO2 "./fifo20"
 
-int FIFO1id, FIFO2id, shmid, mesgid, sem;
+int FIFO1id, FIFO2id, shmid, mesgid, se;
 
 void quit(int sig){
    
@@ -44,7 +44,7 @@ void quit(int sig){
         ErrExit("unlink failed");
     }
     
-    if(sem != 0 && (semctl(sem , 0 , IPC_RMID, NULL )== -1)){
+    if(se != 0 && (semctl(se , 0 , IPC_RMID, NULL )== -1)){
        ErrExit("set di semafori non eliminato");
     }
        
@@ -104,7 +104,9 @@ int main(int argc, char * argv[]) {
     }
  
     //creazione  semaforo  per gestione shared_memory 
-    int semid = semget(semkey, 2, S_IRUSR | S_IWUSR);   
+    int semid = semget(semkey, 2, IPC_CREAT | S_IRUSR | S_IWUSR);  
+    if(semid == -1){
+      ErrExit("errore creazione semafori");} 
     union semun arg;
     unsigned short values[] = {0, 0}; // inizializzazione del set di semafori 
     arg.array = values;
@@ -113,7 +115,7 @@ int main(int argc, char * argv[]) {
         ErrExit("semctl SETALL failed");
     }
    
-    char *ptr_shm= (char *)get_shared_memory(shmid , 0);  
+    char *ptr_shm= (char *)get_shared_memory(shmid , 0);
     ptr_shm = "numero file ricevuto";
   
     semOp(semid,0,1); // sblocco client 
@@ -153,14 +155,19 @@ int main(int argc, char * argv[]) {
     
     int num_file = 0 ; 
     int g = 0 ; 
-    
+    key_t sem = 4 ;
     //creazione set di semafori per gestire i 50 messaggi su ogni struttura 
-    int sem = semget(sem, 4, S_IRUSR | S_IWUSR);   
+    se = semget(sem, 4, IPC_CREAT | S_IRUSR | S_IWUSR);
+
+    if(se == -1 ){
+        ErrExit("set di semafori non creata");
+    }
+    
     union semun ar;
     unsigned short value[] = {50, 50, 50 , 50 }; // inizializzazione del set di semafori 
     ar.array = value;
 
-    if (semctl(sem, 0, SETALL, arg) == -1){
+    if (semctl(se, 0, SETALL, ar) == -1){
         ErrExit("semctl SETALL failed");
     }
    
@@ -173,7 +180,7 @@ int main(int argc, char * argv[]) {
            ErrExit("errore nella lettura della FIFO1");
         }
            
-        semOp(sem, 0 , 1 ); 
+        semOp(se, 0 , 1 ); 
         
         inserimento_messaggio(messaggio, n , messaggi, num_file, c) ;
     
@@ -183,7 +190,7 @@ int main(int argc, char * argv[]) {
            ErrExit("errore nella lettura della FIFO2");
         }
            
-        semOp(sem , 1, 1 ); 
+        semOp(se , 1, 1 ); 
         
         inserimento_messaggio(messaggio, n , messaggi, num_file,c );
     
@@ -191,17 +198,17 @@ int main(int argc, char * argv[]) {
         
         ptr_shm = messaggio; 
         
-        semOp(sem , 2, 1); 
+        semOp(se , 2, 1); 
         
         inserimento_messaggio(messaggio, n , messaggi, num_file,c );
-    
-       
+          
         size_t mSize = sizeof( message_t ) - sizeof(long);
-        if(msgrcv(mesgid, &messaggio , mSize , 0 )==-1){
+        
+        if(msgrcv(mesgid, &messaggio , mSize , 0 , 0) == -1){
            ErrExit("errore lettura message queue");
         }
            
-        semOp(sem, 3, 1);
+        semOp(se, 3, 1);
          
         inserimento_messaggio(messaggio, n , messaggi, num_file, c );
 
@@ -209,7 +216,7 @@ int main(int argc, char * argv[]) {
       
     free_shared_memory(ptr_shm);
     
-   // rimuovo semaforo per gestire shared_memory 
+    // rimuovo semaforo per gestire shared_memory 
     if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1){
         ErrExit("semctl IPC_RMID failed");
     }

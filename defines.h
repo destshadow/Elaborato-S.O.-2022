@@ -18,6 +18,7 @@
 #include "semaphore.h"
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/msg.h>
 
 struct message{
     long mtype ; 

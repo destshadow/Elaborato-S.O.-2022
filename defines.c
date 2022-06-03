@@ -226,22 +226,26 @@ char *GetSpecificPathEntry(int a){
         
         if(strncmp(s,"PWD", 3) == 0){
             PWD = *it;
+            strcpy(PWD, (s + 4));
         }
 
         if(strncmp(s, "HOME", 4) == 0){
             HOME = *it;
+            strcpy(HOME, (s + 5));
         }
 
+        //+ 1 per l'uguale sopra lo conto gia 
         if(strncmp(s, "USER", strlen("USER")) == 0){
             USER = *it;
+            strcpy(USER, (s + strlen("USER") + 1));
         }
-
+        
+        //+ 1 per l'uguale sopra lo conto gia 
         if(strncmp(s, "USERNAME", strlen("USERNAME")) == 0){
             USER = *it;
+            strcpy(USER, (s + strlen("USERNAME") + 1));
         }
-
     }
-
 
     if(a == 1){
         return HOME;

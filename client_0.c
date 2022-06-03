@@ -204,7 +204,7 @@ int main(int argc, char * argv[]) {
     struct terminato termina;
 
     size_t size = sizeof(termina) - sizeof(long);
-    if ( msgrcv(mesgid, &termina, size, 0 ) == -1){
+    if ( msgrcv(mesgid, &termina, size, 0, 0 ) == -1){
         ErrExit("messaggio non ricevuto");
     }
    //deve ritornare a settare la maschera 
