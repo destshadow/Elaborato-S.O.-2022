@@ -86,13 +86,13 @@ int main(int argc, char * argv[]) {
     if(FIFO1id == -1){
         ErrExit("errore apertura FIFO1");
     }
-   
+
     FIFO2id = open(pathnameFIFO1 , O_RDONLY);
 
     if(FIFO2id == -1){
         ErrExit("errore apertura FIFO2");
     }
-        
+
     int n; // variabile buffer del numero dei file che abbiamo letto
    
     // lettura messaggio da FIFO1 e scrittura messaggio su shared_memory 
@@ -118,8 +118,7 @@ int main(int argc, char * argv[]) {
     char *ptr_shm= (char *)get_shared_memory(shmid , 0);
     ptr_shm = "numero file ricevuto";
   
-    semOp(semid,0,1); // sblocco client 
-   
+    semOp(semid,0,1); // sblocco client  
     
     // apro fifo anche in scrittura per far si' che rimangano in ascolto sul canale 
     
@@ -170,10 +169,8 @@ int main(int argc, char * argv[]) {
     if (semctl(se, 0, SETALL, ar) == -1){
         ErrExit("semctl SETALL failed");
     }
-   
     
     while(num_file != n ){
-        
        
         int fifo1 = read(FIFO1id , messaggio, sizeof(messaggio));
         if(fifo == -1 ){
