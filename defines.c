@@ -12,56 +12,86 @@
 #define pathnameFIFO1 "./fifo10"
 #define pathnameFIFO2 "./fifo20"
 
-int ChangeDirAndGetEntry(char *s, char nomi[]){
+int ChangeDirAndGetEntry(int n ,char *s, char *nomi){
     DIR *directory;
     struct dirent *dentry;
     int count = 0;
-
+    char *path ;
+    int dimensione;
+    struct stat statbuf;
+    
     if(chdir(s) == -1){
-        ErrExit("Errore nel cambio directory");
+        ErrExit("Errore nel cambio directory\n");
         return -1;
     }
-
+   
+    char *pwd = getcwd(NULL, 0); //restituisce il nome della directory
+    printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", getenv("USER"), pwd);
+   
     directory = opendir(s);
-
     if(directory == NULL){
         return -1;
     }
 
-    printf("Ciao %s, ora inizio l’invio dei file contenuti in %s", GetSpecificPathEntry(3), GetSpecificPathEntry(2));
-
-    struct stat *statbuf;
-
     while ((dentry = readdir(directory)) != NULL){
-         
-        if (strcmp(dentry->d_name, ".") == 0 ||
-            strcmp(dentry->d_name, "..") == 0){ 
-            //prendiamo tutti i file in una directori
-            //noi vogliamo solo quelli che iniziano per sendme_ 
-            if (dentry->d_type == DT_REG)
-                printf("Regular file: %s\n", dentry->d_name);
+        
+        //controllo sottocartelle 
+        
+        if (dentry -> d_type == DT_DIR && strcmp(dentry->d_name, ".") != 0 ||
+            strcmp(dentry->d_name, "..") != 0){ 
             
-            if(stat(dentry->d_name, statbuf) == -1){
-                ErrExit("errore nello stat");
-                return -1;
+            dimensione = strlen(s) + strlen(dentry->d_name) + 2; //lunghezza path + nome entry
+            
+            path = (char *) malloc(sizeof(char) * dimensione);
+
+            if(path == NULL) {
+                ErrExit("malloc fallito");
             }
-            if (statbuf->st_size < 4096){
-                if(memcmp (dentry->d_name , "sendme_", 7 ) == 0 ){
-                    nomi[count] = (char *)statbuf -> st_ino;
-                    count ++ ; 
-                }
-            } 
+
+            // Imposta il nuovo path
+            strcpy(path,s);
+            strcat(strcat(path, "/"), dentry->d_name);
+            
+            // Chiamata ricorsiva
+            int n = ChangeDirAndGetEntry(n, path, nomi);
+
+            free(path);
+        }
+            
+        if (dentry->d_type == DT_REG && strchr(dentry ->d_name , "sendme_") != NULL){
+            printf("Regular file: %s\n", dentry->d_name);
+            
+            dimensione = strlen(s) + strlen(dentry->d_name) + 2;
+            char *nome = (char *) malloc(sizeof(char) * dimensione);
+
+            //  path del file 
+            strcpy(nome, s);
+            strcat(nome, "/");
+            strcat(nome, dentry->d_name);
+
+            //costruisco il path (riga sopra)
+            
+            if(stat(nome, &statbuf) == -1) {
+                ErrExit("stat fallito");
+            }
+            
+            if(statbuf.st_size >= 4 && statbuf.st_size <= 4096) {
+               
+               nomi[count] = (char *) malloc(sizeof(char) * dimensione);
+               nomi[count] = nome;
+               count ++ ; 
+            }  
         }
     }
-
+    
     if(count <= 0 || count > 100 ){
         ErrExit("File non trovati o ci sono più di 100 file ");
-        return -1;
     }
-
-    closedir(directory);
-    return count; //sarebbe il numero di file da inviare
-
+ 
+    if( closedir(directory) == -1);
+        ErrExit("closedir fallito");
+   
+    return count; // numero di file da inviare
 }
 
 //((myint+3)/4)*4

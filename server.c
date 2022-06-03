@@ -71,7 +71,8 @@ int main(int argc, char * argv[]) {
         ErrExit("message queue non creata");
     }
     
-    if(mkfifo(pathnameFIFO1, O_CREAT | S_IRUSR | S_IWUSR) == -1){  //fifo 1
+    //se blocca qui 
+    if(mkfifo(pathnameFIFO1, S_IRUSR | S_IWUSR) == -1){  //fifo 1
         ErrExit("FIFO10 non creata");
     }
     
@@ -87,7 +88,7 @@ int main(int argc, char * argv[]) {
         ErrExit("errore apertura FIFO1");
     }
 
-    FIFO2id = open(pathnameFIFO1 , O_RDONLY);
+    FIFO2id = open(pathnameFIFO2 , O_RDONLY);
 
     if(FIFO2id == -1){
         ErrExit("errore apertura FIFO2");
@@ -97,7 +98,7 @@ int main(int argc, char * argv[]) {
    
     // lettura messaggio da FIFO1 e scrittura messaggio su shared_memory 
    
-    int fifo = read(FIFO1id, n, sizeof(n));
+    int fifo = read(FIFO1id, &n, sizeof(n)); //non gli piace n
    
     if(fifo == -1 ){
         ErrExit("errore nella lettura della FIFO1");
@@ -116,7 +117,7 @@ int main(int argc, char * argv[]) {
     }
    
     char *ptr_shm= (char *)get_shared_memory(shmid , 0);
-    ptr_shm = "numero file ricevuto";
+    ptr_shm = 'numero file ricevuto';
   
     semOp(semid,0,1); // sblocco client  
     
@@ -139,10 +140,11 @@ int main(int argc, char * argv[]) {
     message_t *messaggio ; 
     message_t **messaggi;
 
-    messaggi = (int *)malloc(n * sizeof(int));
+    messaggi = (message_t *)malloc(n * sizeof(message_t));
 
+    //
     for(int i = 0; i < n; i++){
-        messaggi[i] = (int *)malloc(4 * sizeof(int));  
+        messaggi[i] = (int *)malloc(4 * sizeof(int)); 
     }
 
     int *c;
@@ -153,7 +155,7 @@ int main(int argc, char * argv[]) {
     }
     
     int num_file = 0 ; 
-    int g = 0 ; 
+    int g = 0 ; //forse non lo usiamo mai
     key_t sem = 4 ;
     //creazione set di semafori per gestire i 50 messaggi su ogni struttura 
     se = semget(sem, 4, IPC_CREAT | S_IRUSR | S_IWUSR);
@@ -173,7 +175,7 @@ int main(int argc, char * argv[]) {
     while(num_file != n ){
        
         int fifo1 = read(FIFO1id , messaggio, sizeof(messaggio));
-        if(fifo == -1 ){
+        if(fifo1 == -1 ){
            ErrExit("errore nella lettura della FIFO1");
         }
            
@@ -193,7 +195,8 @@ int main(int argc, char * argv[]) {
     
         semOp(semid , 1 , -1 ); // attendo scrittura dati 
         
-        ptr_shm = messaggio; 
+        message_t *ptr_shm = (message_t*)get_shared_memory(shmid,0);
+        *ptr_shm = *messaggio;
         
         semOp(se , 2, 1); 
         

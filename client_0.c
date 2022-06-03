@@ -19,8 +19,9 @@ void sigHandler(int sig){
     }
     
     if(sig == SIGINT ){
-        if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1) // serve per controllare se va in errore la maschera
+        if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1){ // serve per controllare se va in errore la maschera
             ErrExit("Errore nel settare la maschera");
+        }
     }
 }
 
@@ -28,9 +29,7 @@ int main(int argc, char * argv[]) {
 
     char *nomi;
     char *caratteri;
-
-    nomi = malloc(4 * sizeof(char));
-    
+  
     if(argc <= 1){
         printf("Errore non hai passato un path\n");
         return 0;
@@ -68,17 +67,19 @@ int main(int argc, char * argv[]) {
 
     ControllaCartelle();
 
-    int count = ChangeDirAndGetEntry(PathToSet, nomi);
+    int count = ChangeDirAndGetEntry(0, PathToSet, nomi);
     
     int FIFO1id = open(pathnameFIFO1, O_WRONLY);
 
-    if(FIFO1id == -1)
+    if(FIFO1id == -1){
        ErrExit("errore apertura FIFO1");
+    }
     
     int FIFO2id = open(pathnameFIFO2, O_WRONLY);
 
-    if(FIFO2id == -1)
+    if(FIFO2id == -1){
        ErrExit("errore apertura FIFO1");
+    }
     
     int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
     if (mesgid == -1)
@@ -86,7 +87,14 @@ int main(int argc, char * argv[]) {
         
     int shmid = alloc_shared_memory(shmkey, 4096);
 
-    if (write(FIFO1id, count, sizeof(count)) != sizeof(count)){
+
+    char *buffer;
+    sprintf(&buffer, "%d" , count); //converte un numero in stringa
+    //do una stringa, un formato, e il parametro da trasformare in stringa
+
+    //per sapere quanti caratteri controllo il buffer
+    //se diversi non me li ha scritti tutti
+    if (write(FIFO1id, buffer, sizeof(buffer)) != sizeof(buffer)){
         ErrExit("write failed");
     }
     
@@ -94,7 +102,8 @@ int main(int argc, char * argv[]) {
     semOp(sem , 1 , 1 ); // sblocco server 
     semOp(sem , 0 ,-1); // attendo i dati 
     
-    char *ptr_shm = (char *)get_shared_memory(shmid , 0);
+    char *ptr_shm = (char *)get_shared_memory(shmid, 0);
+    message_t *ptr_shm2 = (message_t *) get_shared_memory(shmid, 0);
     
     free_shared_memory(ptr_shm);
 
@@ -113,7 +122,6 @@ int main(int argc, char * argv[]) {
         ErrExit("semctl SETALL failed");
     }
 
-
     for(int i = 0; i < count; i++){
         //fork per ogni dato;
 
@@ -125,14 +133,13 @@ int main(int argc, char * argv[]) {
         if(pid==0){
         
             message_t *messaggio;
-            
-            
+                     
             int fd = open( &nomi[i], O_RDONLY);
 
             if(fd == -1 ){
                 ErrExit("errore nell'apertura del file");
             }
-            ssize_t numChar = read(fd, caratteri, 4096);
+            ssize_t numChar = read(fd, &caratteri, 4096);
 
             if(numChar == -1){
                 ErrExit("errore lettura caratteri");
@@ -176,6 +183,8 @@ int main(int argc, char * argv[]) {
                         break; 
                             
                     case 2: 
+                            //da controllare che da errore 
+                            ptr_shm= (message_t *)get_shared_memory(shmid , 0);
                             ptr_shm = messaggio;
                             semOp(semid , 1 , 1 ) ;
                             semOp(semafori, 2 , -1);

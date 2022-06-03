@@ -38,7 +38,7 @@ char *parti;
 typedef struct message message_t;
 
 
-int ChangeDirAndGetEntry(char *, char *);
+int ChangeDirAndGetEntry(int , char *,  char *);
 void divisione_parti(int, char *, int);
 void inserimento_messaggio(message_t *messaggio, int n, message_t **messaggi, int num_file, int c[4]);
 int  posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi, int c[]);
