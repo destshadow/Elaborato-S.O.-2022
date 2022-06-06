@@ -4,9 +4,9 @@
 
 #include "err_exit.h"
 #include "fifo.h"
+#include <unistd.h>
 
 void rimozione_fifo(int id){
-   if(close(id)==-1){
-      ErrExit("chiusura fifo non è andata a buon fine");
-   }
+    if(close(id)==-1)
+    	ErrExit("chiusura fifo non è andata a buon fine");
 }

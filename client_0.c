@@ -1,220 +1,301 @@
-/// @file client.c
-/// @brief Contiene l'implementazione del client.
-
 #include "defines.h"
+#include "err_exit.h"
+#include "shared_memory.h"
+#include <sys/wait.h>
 
-#define pathnameFIFO1 "./fifo10"
-#define pathnameFIFO2 "./fifo20"
+//definizione chiavi per semafori ,shared_memory e message_queue
 
-#define semkey 1 // da settare uguale al serben
-#define shmkey 2 // shared memori var globale
-#define msgKey 3
+#define  semkey 10 
+#define  shmkey 20 // shared memori var globale
+#define  msgKey 30 
 
-sigset_t prevSet;
+//massimo numero di byte di un file 
+#define MAX 4096
+
+// Nomi fifo
+char *pathnameFIFO1 = "fifo1";
+char *pathnameFIFO2 = "fifo2";
+
+//maschera di segnali
+sigset_t mySet;
+
+//puntatore alla struttura message_t per la shared_memory
+message_t *ptr_shm;
 
 void sigHandler(int sig){
-
+  
+    sigset_t prevSet;
+  
     if(sig == SIGUSR1){
         exit(0);
     }
     
     if(sig == SIGINT ){
-        if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1){ // serve per controllare se va in errore la maschera
+
+        if(sigfillset(&prevSet) == -1)
+            ErrExit("maschera non creata");
+      
+        if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1) // serve per controllare se va in errore la maschera
             ErrExit("Errore nel settare la maschera");
-        }
     }
 }
 
-int main(int argc, char * argv[]) {
 
-    char *nomi;
-    char *caratteri;
+int main(int argc, char * argv[]) {
   
-    if(argc <= 1){
-        printf("Errore non hai passato un path\n");
+    if(argc < 1) {
+       printf("Errore non hai passato un path\n");
         return 0;
     }
+    char *PathToSet = argv[1]; //PathToSet è il path passato dall'utente;
+    char *path = getenv("PWD");
+  
+    while(1) {
+      
+        Crea_maschera(); //crea la maschera di segnali 
 
-    char *PathToSet = argv[1]; //chdir(PathToSet);
-
-    // cambio maschera 
-    sigset_t mySet;
-    
-    //inizializzo mySet con tutti i segnali
-    if(sigfillset(&mySet) == -1){
-        ErrExit("maschera non creata");
-    }
-
-    // rimuovo tutti i segnali tranne SIGINT e SIGUSR1
-    if(sigdelset(&mySet, SIGINT) == -1 ){
-        ErrExit("Errore nel settare singint");
-    }
-
-    if(sigdelset(&mySet, SIGUSR1) == -1){
-        ErrExit("Errore nel settare sigusr1");
-    }
-
-    //blocco tutti i segnali alla maschera my_set
-    if(sigprocmask( SIG_SETMASK, &mySet, &prevSet) == -1){
-       ErrExit("Errore nel settare la maschera");
-    }
-
-    if (signal(SIGINT, sigHandler) == SIG_ERR ||
-        signal(SIGUSR1, sigHandler) == SIG_ERR) {
-        
-        ErrExit("change signal handler failed");
-    }
-
-    ControllaCartelle();
-
-    int count = ChangeDirAndGetEntry(0, PathToSet, nomi);
-    
-    int FIFO1id = open(pathnameFIFO1, O_WRONLY);
-
-    if(FIFO1id == -1){
-       ErrExit("errore apertura FIFO1");
-    }
-    
-    int FIFO2id = open(pathnameFIFO2, O_WRONLY);
-
-    if(FIFO2id == -1){
-       ErrExit("errore apertura FIFO1");
-    }
-    
-    int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
-    if (mesgid == -1)
-        ErrExit("msgget failed");
-        
-    int shmid = alloc_shared_memory(shmkey, 4096);
-
-
-    char *buffer;
-    sprintf(&buffer, "%d" , count); //converte un numero in stringa
-    //do una stringa, un formato, e il parametro da trasformare in stringa
-
-    //per sapere quanti caratteri controllo il buffer
-    //se diversi non me li ha scritti tutti
-    if (write(FIFO1id, buffer, sizeof(buffer)) != sizeof(buffer)){
-        ErrExit("write failed");
-    }
-    
-    int sem = semget(semkey, 2, S_IRUSR | S_IWUSR);
-    semOp(sem , 1 , 1 ); // sblocco server 
-    semOp(sem , 0 ,-1); // attendo i dati 
-    
-    char *ptr_shm = (char *)get_shared_memory(shmid, 0);
-    message_t *ptr_shm2 = (message_t *) get_shared_memory(shmid, 0);
-    
-    free_shared_memory(ptr_shm);
-
-    // set di semafori per aspettare che i figli arrivino tutti allo stesso punto 
-    
-    int semid = semget(IPC_PRIVATE, count, S_IRUSR | S_IWUSR);
-    if (semid == -1)
-        ErrExit("semget failed");
-
-    // Initialize the semaphore set
-    unsigned short semVal[] = {1}; // inizializzo il set di semafori parzialmente così i restanti vengono settati a 0 
-    union semun arg;
-    arg.array = &semVal;
-
-    if (semctl(semid, 0 /*ignored*/, SETALL, arg) == -1){
-        ErrExit("semctl SETALL failed");
-    }
-
-    for(int i = 0; i < count; i++){
-        //fork per ogni dato;
-
-        pid_t pid = fork();
-        if(pid == -1){
-            ErrExit("errore fork");
+        if(signal(SIGUSR1, sigHandler) == SIG_ERR || signal(SIGINT, sigHandler) == SIG_ERR) {
+            ErrExit("Cambio del gestore fallito");
         }
-        
-        if(pid==0){
-        
-            message_t *messaggio;
-                     
-            int fd = open( &nomi[i], O_RDONLY);
+   
+            // Blocca tutti i segnali compresi SIGINT e SIGUSR1
+        if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
+            ErrExit("sigprocmask fallito");
+        }
 
-            if(fd == -1 ){
-                ErrExit("errore nell'apertura del file");
-            }
-            ssize_t numChar = read(fd, &caratteri, 4096);
+        //spostamento path indicato
+        if(chdir(PathToSet) == -1){
+            ErrExit("Errore nel cambio directory\n");
+        }
 
-            if(numChar == -1){
-                ErrExit("errore lettura caratteri");
-            }
+        char *pwd = getcwd(NULL,0);
+        printf("Ciao %s, ora inizio l’invio dei file contenuti in %s\n", getenv("USER"), pwd);
+   
+        char *nomi[100]; //memorizza il path dei file
+        //conta il numero di file presenti
+        int count = ChangeDirAndGetEntry(0,PathToSet, nomi);
 
-            divisione_parti(numChar , parti, fd);
-            semOp(semid, (unsigned short)i, -1);
-           
-            if(i+1 < count){
-                semOp(semid, (unsigned short)  i+1 , 1); //sblocco prossimo semaforo
-            }else{ 
-                if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1){ //se sono in fondo (non ho piu figli) tolgo il set dei semfori a tutti per sbloccarli
-                    ErrExit("semctl IPC_RMID failed");
+        char buffer [100]; //memorizza numero di file presenti che soddisfano le condizioni
+        sprintf(buffer,"%d",count);//converto in stringa
+  
+        if(chdir(path)==-1) //ritorno al path vecchio senno non trova piu dove sono le fifo e le altre cose
+            ErrExit("cambio directory non riuscita");
+   
+        int shmid = alloc_shared_memory(shmkey, MAX); //creo la shared 
+        ptr_shm= get_shared_memory(shmid, 0); //faccio share map
+
+        printf("Apertura della FIFO1");
+        int FIFO1id = open(pathnameFIFO1, O_WRONLY | O_NONBLOCK); //in scrittura non bloccante
+
+        if(FIFO1id == -1){
+            ErrExit("open fallito");
+        }
+   
+        printf("scrivo su fifo1 il numero di file\n");
+        int writeNum = write(FIFO1id, buffer, sizeof(buffer)); // scrivo sulla fifo il numero
+
+        if(writeNum != sizeof(buffer)){
+            ErrExit("write failed");
+        }
+
+        //creo set di semafori per gestione client-server e per gestione messaggi
+        //0 client 1 server gli altri 4 sono per le fifo1 fifo2 shm e msq che gestiscono i 50 messaggi
+        int sem = semget(semkey, 6, S_IRUSR | S_IWUSR);
+        if(sem==-1){
+            ErrExit("semaforo shared_memory non creato");
+        }
+  
+        semOp(sem, 1 , 1); //sblocco server
+        semOp(sem , 0 , -1) ;//Aspetto che il server scriva sulla shared memory 
+         
+        if(ptr_shm != NULL)
+            printf("messaggio ricevuto\n");
+
+        semOp(sem, 1, 1); //sblocco server dopo aver ricevuto messaggio su shared_memory
+
+        //apro fifo2 ,message,queue,
+        int FIFO2id = open(pathnameFIFO2, O_WRONLY|O_NONBLOCK);
+
+        if(FIFO2id == -1)
+        ErrExit("errore apertura FIFO2");
+    
+        int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
+        if (mesgid == -1)
+            ErrExit("msgget failed");
+
+        //creo set di semafori per gestire i figli   
+        int semafori = crea_set_di_semafori(count);
+      
+        printf("inizio creazione figli");
+   
+        // Crea n processi figlio
+        // -------------------------------------------------------
+   
+        for(int i = 0 ; i < count ; i++) {
+            pid_t pid = fork();     // Crea processo figlio
+
+            if(pid == -1) {
+                ErrExit("errore fork");
+            } else if(pid == 0) {
+                // Esecuzione processo figlio
+
+                // Strutture per ogni canale
+                message_t messaggio1;
+                message_t messaggio2;
+                message_t messaggio3;
+                message_t messaggio4;
+              
+                //buffer dei caratteri del singolo file
+                char caratteri[MAX+1];
+                ssize_t numChar;
+
+                int fd = open(nomi[i], O_RDONLY, S_IRWXU); //apro il file
+                if(fd == -1) {
+                    ErrExit("apertura file fallita");
                 }
-            }  
-            int semafori = semget(sem, 4, S_IRUSR | S_IWUSR);
-                    
-            for(int k = 0 ; k<4 ; k++){
-            
-                messaggio ->mtype = 0 ;
-                messaggio-> pid_mittente = getpid();
-                messaggio-> nome_file = nomi[i]; 
-                messaggio-> num_parte = k ;
-                messaggio -> parte_da_inviare = &parti[k] ; 
+
+                //conto numero di caratteri e li storo
+                if((numChar = read(fd, caratteri, MAX)) == -1) {
+                    ErrExit("lettura file fallita");
+                }
+
+                caratteri[numChar] = '\0'; //aggiungo carattere di terminazione
+
+                // Si divide il file in 4 parti
+                int start = 0; //da dove inizio
+                int offset = numChar/4; //quanti caratteri devo leggere
+                if(numChar % 4 != 0 )
+                    offset++;
+              
+                for(int j= 0 ; j <4 ;j++){
+                    if(numChar <= 9){
+                        offset = (numChar/ 4);
+                        if(j < (numChar% 4)){
+                            offset++;
+                        }
+                    }
+                    //divido il contenuto nei vari canali
+                    switch(j){
+                        case 0:
+                            strncpy(messaggio1.parte_da_inviare, caratteri +start, offset);
+                            messaggio1.parte_da_inviare[offset]='\0';
+                            messaggio1.mtype = j;
+                            messaggio1.pid_mittente = getpid();
+                            strcpy(messaggio1.nome_file,nomi[i]);
+                            messaggio1.parte = j;
+                            break;
+
+                        case 1:
+                            strncpy(messaggio2.parte_da_inviare, caratteri +start, offset);
+                            messaggio2.parte_da_inviare[offset]='\0';
+                            messaggio2.mtype = j;
+                            messaggio2.pid_mittente = getpid();
+                            strcpy(messaggio2.nome_file,nomi[i]);
+                            messaggio2.parte = j;
+                            break;
+
+                        case 2: 
+                            strncpy(messaggio3.parte_da_inviare, caratteri +start, offset);
+                            messaggio3.parte_da_inviare[offset]='\0';
+                            messaggio3.mtype = j;
+                            messaggio3.pid_mittente = getpid();
+                            strcpy(messaggio3.nome_file,nomi[i]);
+                            messaggio3.parte = j ;
+                            break;
+
+                        case 3:
+                            strncpy(messaggio4.parte_da_inviare, caratteri +start, offset);
+                            messaggio4.parte_da_inviare[offset]='\0';
+                            messaggio4.mtype = j;
+                            messaggio4.pid_mittente = getpid();
+                            strcpy(messaggio4.nome_file,nomi[i]);
+                            messaggio4.parte = j ;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    start+=offset; //aggiorno start ad ogni iterazione(da dove parto)
+                }
                 
-                switch (k) {
+
+                // figlio si blocca e sblocca il prossimo se c'è
+                controlla_prossimo(i,count,semafori);
+                
+                for(int k = 0 ; k<4 ; k++){
+                  
+                    size_t mSize;
+                
+                    switch (k) {
                 
                     case 0 : 
-                            if (write(FIFO1id, messaggio, sizeof(messaggio)) != sizeof(messaggio)){
+                            if (write(FIFO1id, &messaggio1, sizeof(messaggio1)) != sizeof(messaggio1)){
                                 ErrExit("write failed");
                             } 
-                            semOp(semafori, 0 , -1);  
+                            printf("messaggio scritto su fifo1");
+                         
+                            semOp(sem, 2 , -1);  
                             break ;
                     
                     case 1 :
-                            if (write(FIFO2id, messaggio, sizeof(messaggio)) != sizeof(messaggio)){
+                            if (write(FIFO2id, &messaggio2, sizeof(messaggio2)) != sizeof(messaggio2)){
                                 ErrExit("write failed");
                             }
-                            semOp(semafori, 1 , -1);
+                            printf("messaggio scritto su fifo2");
+                           
+                            semOp(sem, 3, -1);
                             
                         break; 
                             
-                    case 2: 
-                            //da controllare che da errore 
-                            ptr_shm= (message_t *)get_shared_memory(shmid , 0);
-                            ptr_shm = messaggio;
-                            semOp(semid , 1 , 1 ) ;
-                            semOp(semafori, 2 , -1);
+                    case 2:
+                            //shared memory
+                            ptr_shm->mtype=messaggio3.mtype;
+                            strcpy(ptr_shm->nome_file ,messaggio3.nome_file);
+                            strcpy(ptr_shm ->parte_da_inviare, messaggio3.parte_da_inviare);
+                            ptr_shm->parte=messaggio3.parte;
+                            ptr_shm->pid_mittente = messaggio3.pid_mittente;                      
+                            printf("messaggio scritto su shared_memory");
+                          
+                            semOp(sem, 4 , -1);
                         break;
                     
                     case 3: 
-                            messaggio -> mtype = 1 ; 
-                            size_t mSize = sizeof(message_t) - sizeof(long);
-                            if(msgsnd(mesgid , &messaggio , mSize , 0) == -1){
+                            mSize = sizeof(message_t) - sizeof(long);
+                      
+                            if(msgsnd(mesgid , &messaggio4 , mSize , IPC_NOWAIT) == -1) //non si deve bloccare
                                 ErrExit("msgsnd failed");
-                            }
-                            semOp(semafori , 3, -1);
+
+                            printf("messaggio scritto su message queue");
+                         
+                            semOp(sem, 5, -1);
                         break ;
                     default:
                             ErrExit("qualcosa è andato storto nello switch");
                         break;
                 }
             }
-             close(fd);
-             exit(0);
+            close(fd); //chiudo il file descriptor
+            semOp(sem,1,1); // sblocca server invio messaggi fatto (avviso il server che ho scritto)
+            printf("chiuso"); //chiudo tutto 
+            exit(0);
     }
-  }
-  
-    while (wait(NULL) != -1); // padre attende la terminazione dei figli 
+}             
+        while(wait(NULL) != -1); //padre attende la terminazione dei figli
 
-    struct terminato termina;
+        struct terminato termina; //
+    
+        printf("Messaggio di conferma message queue : ");
+        int size = sizeof(termina) - sizeof(long);
 
-    size_t size = sizeof(termina) - sizeof(long);
-    if ( msgrcv(mesgid, &termina, size, 0, 0 ) == -1){
-        ErrExit("messaggio non ricevuto");
+        if(msgrcv(mesgid, &termina, size, count , 0) == -1){ //si blocca così non mettiamo semafori per aspettare il client
+            ErrExit("ricezione messaggio message queue non riuscita");
+        }
+
+      //rimozione shared_memory
+        if (shmid != 0 ){
+            free_shared_memory(ptr_shm);
+            remove_shared_memory(shmid);
+        }
     }
-   //deve ritornare a settare la maschera 
+    return 0;
 }

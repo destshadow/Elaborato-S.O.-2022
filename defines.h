@@ -3,9 +3,9 @@
 ///         e funzioni specifiche del progetto.
 
 #pragma once
-
 #include <string.h>
 #include <sys/types.h>
+#include <sys/msg.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -17,32 +17,31 @@
 #include <sys/sem.h>
 #include "semaphore.h"
 #include <sys/stat.h>
-#include <string.h>
-#include <sys/msg.h>
+
 
 struct message{
     long mtype ; 
     pid_t pid_mittente;
-    char *nome_file;
-    int num_parte;
-    char *parte_da_inviare;
+    char nome_file[100];
+    int parte ;
+    char parte_da_inviare[1025];
 };
 
 struct terminato{
     long mtype ; 
-    char *text;
+    char text[150];
 };
         
-char *parti;
+char *parti ;
 
 typedef struct message message_t;
 
 
-int ChangeDirAndGetEntry(int , char *,  char *);
-void divisione_parti(int, char *, int);
-void inserimento_messaggio(message_t *messaggio, int n, message_t **messaggi, int num_file, int c[4]);
-int  posiziona_messaggio(message_t *messaggio, int count,  message_t **messaggi, int c[]);
-void stampa_su_file ( int r , int count , message_t **messaggi);
-char * scrivi(int r , int k , message_t **messaggi);
-void ControllaCartelle();
-//char * GetSpecificPathEntry(int );
+void Crea_maschera();
+int ChangeDirAndGetEntry(int, char *, char **);
+int crea_set_di_semafori(int count);
+void controlla_prossimo(int i, int count , int figli);
+void posiziona_messaggio(message_t *messaggio, int count,int num_file,int c[]);
+void stampa_su_file ( message_t fiof1[],message_t fifo2[],message_t shared[],message_t message[],int index);
+void scrivi(char buffer[], int k,message_t messaggio[] ,int index,char stringa[]);
+void Extension(char *path) ;

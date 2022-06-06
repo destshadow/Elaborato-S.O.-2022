@@ -8,45 +8,43 @@
 #include "fifo.h"
 #include <fcntl.h>
 
-#define semkey 1 // da settare uguale al serben
-#define shmkey 2 // shared memori var globale
-#define msgKey 3
+#define  semkey 10 // da settare uguale al serben
+#define  shmkey 20 // shared memori var globale
+#define  msgKey 30 
 
-#define pathnameFIFO1 "./fifo10"
-#define pathnameFIFO2 "./fifo20"
+#define pathnameFIFO1 "fifo1"
+#define pathnameFIFO2 "fifo2"
 
-int FIFO1id, FIFO2id, shmid, mesgid, se;
+//id globali
+int FIFO1id , FIFO2id , shmid , mesgid ,  semid;
+
+message_t* ptr_shm;
 
 void quit(int sig){
    
-    if (shmid != 0){
+    if (shmid != 0 ){
+        free_shared_memory(ptr_shm);
         remove_shared_memory(shmid);
     }
    
-    if(mesgid != 0 && (msgctl(mesgid, IPC_RMID, NULL)==-1)){
+    if(mesgid != 0 && (msgctl(mesgid, IPC_RMID, NULL)==-1) )
         ErrExit("message_queue non è stata chiusa");
-    }
    
-    if (FIFO1id != 0 && close(FIFO1id) == -1){
+    if (FIFO1id != 0 && close(FIFO1id) == -1)
         ErrExit("close failed");
-    }
 
-    if (FIFO2id != 0 && close(FIFO2id) == -1){
+    if (FIFO2id != 0 && close(FIFO2id) == -1)
         ErrExit("close failed");
-    }
-
+  
     // Remove the FIFO
-    if (unlink(pathnameFIFO1) != 0){
+    if (unlink(pathnameFIFO1) != 0)
         ErrExit("unlink failed");
-    }
         
-    if (unlink(pathnameFIFO2) != 0){
+    if (unlink(pathnameFIFO2) != 0 )
         ErrExit("unlink failed");
-    }
     
-    if(se != 0 && (semctl(se , 0 , IPC_RMID, NULL )== -1)){
+    if(semid != 0 && (semctl(semid , 0 , IPC_RMID, NULL )== -1))
        ErrExit("set di semafori non eliminato");
-    }
        
     // terminate the process
     exit(0);
@@ -54,192 +52,165 @@ void quit(int sig){
 
 int main(int argc, char * argv[]) {
 
- // all'arrivo di SIGINT devo togliere tutte le IPC aperte 
-    if (signal(SIGINT, quit) == SIG_ERR){
-       ErrExit("change signal handlers failed");
+    sigset_t mySet;
+  
+    if(sigfillset(&mySet) == -1) {
+        ErrExit("sigfillset fallito");
     }
 
-   // ControllaCartelle();
+    // Rimuove dall'insieme il segnale SIGINT
+    if(sigdelset(&mySet, SIGINT) == -1) {
+        ErrExit("sigdelset fallito");
+    }
+
+    // Blocca tutti i segnali eccetto SIGINT
+    if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
+        ErrExit("sigprocmask fallito");
+    }
+
+    // all'arrivo di SIGINT devo togliere tutte le IPC aperte 
+    if (signal(SIGINT, quit) == SIG_ERR)
+        ErrExit("change signal handlers failed"); 
+
+    //fine di creazione e cambio della maschera
 
     //creazione shared_memory , message_queue , FIFO1 , FIFO2 
-   
     int shmid = alloc_shared_memory(shmkey, 4096);
+    ptr_shm= (message_t*)get_shared_memory(shmid , 0); 
     
     int mesgid = msgget(msgKey , IPC_CREAT | S_IRUSR | S_IWUSR);//coda di messaggi
 
-    if(mesgid == -1){
+    if(mesgid == -1) 
         ErrExit("message queue non creata");
-    }
     
-    //se blocca qui 
-    if(mkfifo(pathnameFIFO1, S_IRUSR | S_IWUSR) == -1){  //fifo 1
-        ErrExit("FIFO10 non creata");
-    }
+    if(mkfifo(pathnameFIFO1 , S_IRUSR | S_IWUSR | S_IWGRP) == -1)  //fifo 1
+        ErrExit("FIFO1 non creata");
     
-    if(mkfifo(pathnameFIFO2, S_IRUSR | S_IWUSR) == -1){ //fifo 2
-        ErrExit("FIFO20 non creata");
-    }
-        
-    //apertura FIFO1 e FIFO2 in lettura 
-   
-    FIFO1id = open(pathnameFIFO1 , O_RDONLY);
-
-    if(FIFO1id == -1){
-        ErrExit("errore apertura FIFO1");
-    }
-
-    FIFO2id = open(pathnameFIFO2 , O_RDONLY);
-
-    if(FIFO2id == -1){
-        ErrExit("errore apertura FIFO2");
-    }
-
-    int n; // variabile buffer del numero dei file che abbiamo letto
-   
-    // lettura messaggio da FIFO1 e scrittura messaggio su shared_memory 
-   
-    int fifo = read(FIFO1id, &n, sizeof(n)); //non gli piace n
-   
-    if(fifo == -1 ){
-        ErrExit("errore nella lettura della FIFO1");
-    }
- 
-    //creazione  semaforo  per gestione shared_memory 
-    int semid = semget(semkey, 2, IPC_CREAT | S_IRUSR | S_IWUSR);  
-    if(semid == -1){
-      ErrExit("errore creazione semafori");} 
+    if(mkfifo(pathnameFIFO2 ,  S_IRUSR | S_IWUSR | S_IWGRP ) == -1) //fifo 2
+        ErrExit("FIFO2 non creata");
+    
+    //creo set di semafori come prima
+    int semid = semget(semkey, 6, IPC_CREAT|S_IRUSR | S_IWUSR);  
+    if(semid == -1)
+        ErrExit("errore creazione semafori");
+  
     union semun arg;
-    unsigned short values[] = {0, 0}; // inizializzazione del set di semafori 
+    unsigned short values[] = {0,0,50,50,50,50}; // inizializzazione del set di semafori
     arg.array = values;
 
-    if (semctl(semid, 0, SETALL, arg) == -1){
-        ErrExit("semctl SETALL failed");
-    }
-   
-    char *ptr_shm= (char *)get_shared_memory(shmid , 0);
-    ptr_shm = 'numero file ricevuto';
-  
-    semOp(semid,0,1); // sblocco client  
-    
-    // apro fifo anche in scrittura per far si' che rimangano in ascolto sul canale 
-    
-    int FIFO1= open(pathnameFIFO1 , O_WRONLY);
-
-    if(FIFO1== -1){
-        ErrExit("errore apertura FIFO1 in scrittura");
-    }
-    
-    int FIFO2 = open(pathnameFIFO1 , O_WRONLY);
-
-    if(FIFO2 == -1){
-        ErrExit("errore apertura FIFO2 in scrittura");
-    }
-    
-    //ricezione file 
-    
-    message_t *messaggio ; 
-    message_t **messaggi;
-
-    messaggi = (message_t *)malloc(n * sizeof(message_t));
-
-    //
-    for(int i = 0; i < n; i++){
-        messaggi[i] = (int *)malloc(4 * sizeof(int)); 
-    }
-
-    int *c;
-    c = (int *) malloc(n * sizeof(int));
-
-    for(int i = 0;i < n; i++){
-        c[i] = 0;
-    }
-    
-    int num_file = 0 ; 
-    int g = 0 ; //forse non lo usiamo mai
-    key_t sem = 4 ;
-    //creazione set di semafori per gestire i 50 messaggi su ogni struttura 
-    se = semget(sem, 4, IPC_CREAT | S_IRUSR | S_IWUSR);
-
-    if(se == -1 ){
-        ErrExit("set di semafori non creata");
-    }
-    
-    union semun ar;
-    unsigned short value[] = {50, 50, 50 , 50 }; // inizializzazione del set di semafori 
-    ar.array = value;
-
-    if (semctl(se, 0, SETALL, ar) == -1){
-        ErrExit("semctl SETALL failed");
-    }
-    
-    while(num_file != n ){
-       
-        int fifo1 = read(FIFO1id , messaggio, sizeof(messaggio));
-        if(fifo1 == -1 ){
-           ErrExit("errore nella lettura della FIFO1");
-        }
-           
-        semOp(se, 0 , 1 ); 
-        
-        inserimento_messaggio(messaggio, n , messaggi, num_file, c) ;
-    
-        
-        int fifo2 = read(FIFO2id, messaggio, sizeof(messaggio));
-        if(fifo2 == -1){
-           ErrExit("errore nella lettura della FIFO2");
-        }
-           
-        semOp(se , 1, 1 ); 
-        
-        inserimento_messaggio(messaggio, n , messaggi, num_file,c );
-    
-        semOp(semid , 1 , -1 ); // attendo scrittura dati 
-        
-        message_t *ptr_shm = (message_t*)get_shared_memory(shmid,0);
-        *ptr_shm = *messaggio;
-        
-        semOp(se , 2, 1); 
-        
-        inserimento_messaggio(messaggio, n , messaggi, num_file,c );
-          
-        size_t mSize = sizeof( message_t ) - sizeof(long);
-        
-        if(msgrcv(mesgid, &messaggio , mSize , 0 , 0) == -1){
-           ErrExit("errore lettura message queue");
-        }
-           
-        semOp(se, 3, 1);
-         
-        inserimento_messaggio(messaggio, n , messaggi, num_file, c );
-
-    }
-      
-    free_shared_memory(ptr_shm);
-    
-    // rimuovo semaforo per gestire shared_memory 
-    if (semctl(semid, 0 /*ignored*/, IPC_RMID, NULL) == -1){
-        ErrExit("semctl IPC_RMID failed");
-    }
-   
-   //struttura per invio messaggio sulla message queue 
-    struct terminato termina ; 
-    
-    // invio messaggio finale 
-    
-    termina.mtype = 1 ;
-    termina.text = " terminato " ; 
-    size_t size = sizeof(struct terminato) - sizeof(long);
-    if ( msgsnd(mesgid, &termina, size, 0 ) == -1){
-        ErrExit("errore invio mesage_queue");
+    //setta i semafori
+    if (semctl(semid, 0, SETALL, arg) == -1)
+        ErrExit("semctl SETALL fallita");
+    //apertura FIFO1 e FIFO2 in lettura 
+     
+    FIFO1id = open(pathnameFIFO1, O_RDONLY| O_NONBLOCK); //non bloccante
+    if(FIFO1id == -1) {
+        ErrExit("open fallito");
     }
      
-    if(close(FIFO1) == -1){
-       ErrExit("chisura fifo1 in scrittura non riuscita");
-    }
+    FIFO2id = open(pathnameFIFO2 , O_RDONLY | O_NONBLOCK); //non bloccante
+    if(FIFO2id == -1)
+        ErrExit("errore apertura FIFO2");
+
+    while(1) {
     
-    if(close(FIFO2) == -1){
-       ErrExit("chiusura fifo2 in scrittura non riuscita");
-    }
+        size_t mSize; //size mshq
+        char r[100]; // variabile buffer del numero dei file che abbiamo letto
+        semOp(semid , 1, -1); //aspetto che il client scriva sulla fifo 1 il n. di file
+        // lettura messaggio da FIFO1 e scrittura messaggio su shared_memory
+
+        int fifo = read(FIFO1id , r , sizeof(r));
+   
+        if(fifo == -1) {
+            ErrExit("errore lettura numero file su FIFO1");
+        }
+
+        //converto il numero dato come stringa ad intero
+        int n = atoi(r);
+
+        printf("numero file %d",n);
+
+        //messaggio da scrivere su shared memory
+        char stringa[100] = "numero ricevuto"; 
     
-   //deve ritornare su fifo1 in ascolto se non arrriva SIGINT 
+        strcpy(ptr_shm ->parte_da_inviare ,stringa);
+        semOp(semid, 0, 1); // sblocco client 
+        semOp(semid, 1, -1); //aspetto che il client legga dalla shared memory
+    
+        //ricezione file, mi salvo i messaggi
+        message_t messaggio ;
+
+        //tengo conto di quando mi arrivano tutte e quattro le parti di un file
+        int c[n+1];
+
+        for(int i = 0;i < n+1; i++){
+            c[i] = 0;
+        }
+
+        semOp(semid,1,-1); //aspetto che i figli scrivano sui vari canali
+    
+        int num_file = 0 ; 
+    
+        if(num_file < n ){
+        
+            //leggo da fifo1 e salvo dentro messaggio
+            int fifo1 = read(FIFO1id , &messaggio, sizeof(messaggio));
+
+            if(fifo1 == -1 ) 
+                ErrExit("errore nella lettura della FIFO1");
+
+            //posiziono il messaggio nel "grande array"
+            posiziona_messaggio(&messaggio, n ,num_file,c) ;
+            printf("messaggi letto su fifo1");
+      
+            semOp(semid,2,1);  //sblocco entrata in fifo1
+      
+            int fifo2 = read(FIFO2id, &messaggio, sizeof(messaggio));
+            if(fifo2 == -1)
+                ErrExit("errore nella lettura della FIFO2");
+        
+            posiziona_messaggio(&messaggio, n ,num_file,c) ;
+            semOp(semid,3,1);
+
+            printf("messaggi letto su fifo2");
+
+            //shared memory
+            messaggio.mtype = ptr_shm->mtype;
+            strcpy(messaggio.nome_file ,ptr_shm->nome_file);
+            strcpy(messaggio.parte_da_inviare, ptr_shm->parte_da_inviare);
+            messaggio.parte=ptr_shm->parte;
+            messaggio.pid_mittente=ptr_shm->pid_mittente;
+      
+            semOp(semid , 4, 1); 
+        
+            posiziona_messaggio(&messaggio, n ,num_file,c) ;
+            printf("messaggi letto su shared");
+
+            //msg queue
+            mSize = sizeof(message_t) - sizeof(long);
+            if(msgrcv(mesgid, &messaggio , mSize , 0,IPC_NOWAIT) == -1)
+                ErrExit("errore lettura message queue");
+           
+            semOp(semid, 5, 1);
+         
+            posiziona_messaggio(&messaggio, n ,num_file,c) ;
+            printf("messaggi letto su message");
+
+            printf("%d\n",num_file);
+      
+        }
+    
+        struct terminato termina ; 
+    
+        // invio messaggio finale 
+    
+        termina.mtype = n;
+        strcpy (termina.text, "terminato");
+    
+        size_t size = sizeof(termina)-sizeof(long);
+        if(msgsnd(mesgid , &termina , size , 0) == -1){ //bloccante finche non il client non ha letto
+            ErrExit("errore invio mesage_queue");
+        }
+    }
+    return 0;
 }
