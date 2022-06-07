@@ -287,4 +287,3 @@ void scrivi(char buffer[],int k,message_t messaggio[] ,int index, char stringa[]
 	sprintf(buffer, "[Parte %d, del file %s, spedita dal processo %d tramite %s]\n%s\n\n", messaggio[index].parte +1,messaggio[index].nome_file , messaggio[index].pid_mittente, stringa,messaggio[index].parte_da_inviare);
 
 }
-

@@ -43,4 +43,4 @@ void controlla_prossimo(int i, int count , int figli);
 void posiziona_messaggio(message_t *messaggio, int count,int num_file,int c[]);
 void stampa_su_file ( message_t fiof1[],message_t fifo2[],message_t shared[],message_t message[],int index);
 void scrivi(char buffer[], int k,message_t messaggio[] ,int index,char stringa[]);
-void Extension(char *path) ;
+void Extension(char *path);
