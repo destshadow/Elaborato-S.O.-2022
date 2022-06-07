@@ -12,9 +12,8 @@
 #define pathnameFIFO1 "obj/fifo10"
 #define pathnameFIFO2 "obj/fifo20"
 
-sigset_t mySet;
 
-void Crea_maschera(){
+void Crea_maschera(sigset_t mySet){
   
     // Riempie mySet con tutti i segnali
     if(sigfillset(&mySet) == -1 ) {

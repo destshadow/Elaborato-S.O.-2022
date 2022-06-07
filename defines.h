@@ -32,12 +32,11 @@ struct terminato{
     char text[150];
 };
         
-char *parti ;
 
 typedef struct message message_t;
 
 
-void Crea_maschera();
+void Crea_maschera(sigset_t );
 int ChangeDirAndGetEntry(int, char *, char **);
 int crea_set_di_semafori(int count);
 void controlla_prossimo(int i, int count , int figli);

@@ -52,7 +52,7 @@ int main(int argc, char * argv[]) {
   
     while(1) {
       
-        Crea_maschera(); //crea la maschera di segnali 
+        Crea_maschera(mySet); //crea la maschera di segnali 
 
         if(signal(SIGUSR1, sigHandler) == SIG_ERR || signal(SIGINT, sigHandler) == SIG_ERR) {
             ErrExit("Cambio del gestore fallito");
