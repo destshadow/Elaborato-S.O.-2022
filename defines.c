@@ -30,6 +30,7 @@ void Crea_maschera(sigset_t mySet){
         ErrExit("sigprocmask fallito");
     }
 }
+
 int ChangeDirAndGetEntry(int num, char *old_path, char **nomi) {
     size_t dim;          // Dimensione percorso
     char *path;      // Nuovo percorso
