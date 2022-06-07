@@ -28,23 +28,23 @@ void quit(int sig){
     }
    
     if(mesgid != 0 && (msgctl(mesgid, IPC_RMID, NULL)==-1) )
-        ErrExit("message_queue non è stata chiusa");
+        ErrExit("message_queue non è stata chiusa\n");
    
     if (FIFO1id != 0 && close(FIFO1id) == -1)
-        ErrExit("close failed");
+        ErrExit("close failed\n");
 
     if (FIFO2id != 0 && close(FIFO2id) == -1)
-        ErrExit("close failed");
+        ErrExit("close failed\n");
   
     // Remove the FIFO
     if (unlink(pathnameFIFO1) != 0)
-        ErrExit("unlink failed");
+        ErrExit("unlink failed\n");
         
     if (unlink(pathnameFIFO2) != 0 )
-        ErrExit("unlink failed");
+        ErrExit("unlink failed\n");
     
     if(semid != 0 && (semctl(semid , 0 , IPC_RMID, NULL )== -1))
-       ErrExit("set di semafori non eliminato");
+       ErrExit("set di semafori non eliminato\n");
        
     // terminate the process
     exit(0);
@@ -55,22 +55,22 @@ int main(int argc, char * argv[]) {
     sigset_t mySet;
   
     if(sigfillset(&mySet) == -1) {
-        ErrExit("sigfillset fallito");
+        ErrExit("sigfillset fallito\n");
     }
 
     // Rimuove dall'insieme il segnale SIGINT
     if(sigdelset(&mySet, SIGINT) == -1) {
-        ErrExit("sigdelset fallito");
+        ErrExit("sigdelset fallito\n");
     }
 
     // Blocca tutti i segnali eccetto SIGINT
     if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
-        ErrExit("sigprocmask fallito");
+        ErrExit("sigprocmask fallito\n");
     }
 
     // all'arrivo di SIGINT devo togliere tutte le IPC aperte 
     if (signal(SIGINT, quit) == SIG_ERR)
-        ErrExit("change signal handlers failed"); 
+        ErrExit("change signal handlers failed\n"); 
 
     //fine di creazione e cambio della maschera
 
@@ -81,18 +81,18 @@ int main(int argc, char * argv[]) {
     int mesgid = msgget(msgKey , IPC_CREAT | S_IRUSR | S_IWUSR);//coda di messaggi
 
     if(mesgid == -1) 
-        ErrExit("message queue non creata");
+        ErrExit("message queue non creata\n");
     
     if(mkfifo(pathnameFIFO1 , S_IRUSR | S_IWUSR | S_IWGRP) == -1)  //fifo 1
-        ErrExit("FIFO1 non creata");
+        ErrExit("FIFO1 non creata\n");
     
     if(mkfifo(pathnameFIFO2 ,  S_IRUSR | S_IWUSR | S_IWGRP ) == -1) //fifo 2
-        ErrExit("FIFO2 non creata");
+        ErrExit("FIFO2 non creata\n");
     
     //creo set di semafori come prima
     int semid = semget(semkey, 6, IPC_CREAT|S_IRUSR | S_IWUSR);  
     if(semid == -1)
-        ErrExit("errore creazione semafori");
+        ErrExit("errore creazione semafori\n");
   
     union semun arg;
     unsigned short values[] = {0,0,50,50,50,50}; // inizializzazione del set di semafori
@@ -100,17 +100,17 @@ int main(int argc, char * argv[]) {
 
     //setta i semafori
     if (semctl(semid, 0, SETALL, arg) == -1)
-        ErrExit("semctl SETALL fallita");
+        ErrExit("semctl SETALL fallita\n");
     //apertura FIFO1 e FIFO2 in lettura 
      
     FIFO1id = open(pathnameFIFO1, O_RDONLY| O_NONBLOCK); //non bloccante
     if(FIFO1id == -1) {
-        ErrExit("open fallito");
+        ErrExit("open fallito\n");
     }
      
     FIFO2id = open(pathnameFIFO2 , O_RDONLY | O_NONBLOCK); //non bloccante
     if(FIFO2id == -1)
-        ErrExit("errore apertura FIFO2");
+        ErrExit("errore apertura FIFO2\n");
 
     while(1) {
     
@@ -122,13 +122,13 @@ int main(int argc, char * argv[]) {
         int fifo = read(FIFO1id , r , sizeof(r));
    
         if(fifo == -1) {
-            ErrExit("errore lettura numero file su FIFO1");
+            ErrExit("errore lettura numero file su FIFO1\n");
         }
 
         //converto il numero dato come stringa ad intero
         int n = atoi(r);
 
-        printf("numero file %d",n);
+        printf("numero file %d\n",n);
 
         //messaggio da scrivere su shared memory
         char stringa[100] = "numero ricevuto"; 
@@ -157,22 +157,22 @@ int main(int argc, char * argv[]) {
             int fifo1 = read(FIFO1id , &messaggio, sizeof(messaggio));
 
             if(fifo1 == -1 ) 
-                ErrExit("errore nella lettura della FIFO1");
+                ErrExit("errore nella lettura della FIFO1\n");
 
             //posiziono il messaggio nel "grande array"
             posiziona_messaggio(&messaggio, n ,num_file,c) ;
-            printf("messaggi letto su fifo1");
+            printf("messaggi letto su fifo1\n");
       
             semOp(semid,2,1);  //sblocco entrata in fifo1
       
             int fifo2 = read(FIFO2id, &messaggio, sizeof(messaggio));
             if(fifo2 == -1)
-                ErrExit("errore nella lettura della FIFO2");
+                ErrExit("errore nella lettura della FIFO2\n");
         
             posiziona_messaggio(&messaggio, n ,num_file,c) ;
             semOp(semid,3,1);
 
-            printf("messaggi letto su fifo2");
+            printf("messaggi letto su fifo2\n");
 
             //shared memory
             messaggio.mtype = ptr_shm->mtype;
@@ -184,17 +184,17 @@ int main(int argc, char * argv[]) {
             semOp(semid , 4, 1); 
         
             posiziona_messaggio(&messaggio, n ,num_file,c) ;
-            printf("messaggi letto su shared");
+            printf("messaggi letto su shared\n");
 
             //msg queue
             mSize = sizeof(message_t) - sizeof(long);
             if(msgrcv(mesgid, &messaggio , mSize , 0,IPC_NOWAIT) == -1)
-                ErrExit("errore lettura message queue");
+                ErrExit("errore lettura message queue\n");
            
             semOp(semid, 5, 1);
          
             posiziona_messaggio(&messaggio, n ,num_file,c) ;
-            printf("messaggi letto su message");
+            printf("messaggi letto su message\n");
 
             printf("%d\n",num_file);
       
@@ -209,7 +209,7 @@ int main(int argc, char * argv[]) {
     
         size_t size = sizeof(termina)-sizeof(long);
         if(msgsnd(mesgid , &termina , size , 0) == -1){ //bloccante finche non il client non ha letto
-            ErrExit("errore invio mesage_queue");
+            ErrExit("errore invio mesage_queue\n");
         }
     }
     return 0;

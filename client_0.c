@@ -33,10 +33,10 @@ void sigHandler(int sig){
     if(sig == SIGINT ){
 
         if(sigfillset(&prevSet) == -1)
-            ErrExit("maschera non creata");
+            ErrExit("maschera non creata\n");
       
         if(sigprocmask( SIG_SETMASK, &prevSet, NULL) == -1) // serve per controllare se va in errore la maschera
-            ErrExit("Errore nel settare la maschera");
+            ErrExit("Errore nel settare la maschera\n");
     }
 }
 
@@ -55,12 +55,12 @@ int main(int argc, char * argv[]) {
         Crea_maschera(mySet); //crea la maschera di segnali 
 
         if(signal(SIGUSR1, sigHandler) == SIG_ERR || signal(SIGINT, sigHandler) == SIG_ERR) {
-            ErrExit("Cambio del gestore fallito");
+            ErrExit("Cambio del gestore fallito\n");
         }
    
             // Blocca tutti i segnali compresi SIGINT e SIGUSR1
         if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
-            ErrExit("sigprocmask fallito");
+            ErrExit("sigprocmask fallito\n");
         }
 
         //spostamento path indicato
@@ -79,30 +79,30 @@ int main(int argc, char * argv[]) {
         sprintf(buffer,"%d",count);//converto in stringa
   
         if(chdir(path)==-1) //ritorno al path vecchio senno non trova piu dove sono le fifo e le altre cose
-            ErrExit("cambio directory non riuscita");
+            ErrExit("cambio directory non riuscita\n");
    
         int shmid = alloc_shared_memory(shmkey, MAX); //creo la shared 
         ptr_shm= get_shared_memory(shmid, 0); //faccio share map
 
-        printf("Apertura della FIFO1");
+        printf("Apertura della FIFO1\n");
         int FIFO1id = open(pathnameFIFO1, O_WRONLY | O_NONBLOCK); //in scrittura non bloccante
 
         if(FIFO1id == -1){
-            ErrExit("open fallito");
+            ErrExit("open fallito\n");
         }
    
         printf("scrivo su fifo1 il numero di file\n");
         int writeNum = write(FIFO1id, buffer, sizeof(buffer)); // scrivo sulla fifo il numero
 
         if(writeNum != sizeof(buffer)){
-            ErrExit("write failed");
+            ErrExit("write failed\n");
         }
 
         //creo set di semafori per gestione client-server e per gestione messaggi
         //0 client 1 server gli altri 4 sono per le fifo1 fifo2 shm e msq che gestiscono i 50 messaggi
         int sem = semget(semkey, 6, S_IRUSR | S_IWUSR);
         if(sem==-1){
-            ErrExit("semaforo shared_memory non creato");
+            ErrExit("semaforo shared_memory non creato\n");
         }
   
         semOp(sem, 1 , 1); //sblocco server
@@ -117,16 +117,16 @@ int main(int argc, char * argv[]) {
         int FIFO2id = open(pathnameFIFO2, O_WRONLY|O_NONBLOCK);
 
         if(FIFO2id == -1)
-        ErrExit("errore apertura FIFO2");
+        ErrExit("errore apertura FIFO2\n");
     
         int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
         if (mesgid == -1)
-            ErrExit("msgget failed");
+            ErrExit("msgget failed\n");
 
         //creo set di semafori per gestire i figli   
         int semafori = crea_set_di_semafori(count);
       
-        printf("inizio creazione figli");
+        printf("inizio creazione figli\n");
    
         // Crea n processi figlio
         // -------------------------------------------------------
@@ -135,7 +135,7 @@ int main(int argc, char * argv[]) {
             pid_t pid = fork();     // Crea processo figlio
 
             if(pid == -1) {
-                ErrExit("errore fork");
+                ErrExit("errore fork\n");
             } else if(pid == 0) {
                 // Esecuzione processo figlio
 
@@ -151,12 +151,12 @@ int main(int argc, char * argv[]) {
 
                 int fd = open(nomi[i], O_RDONLY, S_IRWXU); //apro il file
                 if(fd == -1) {
-                    ErrExit("apertura file fallita");
+                    ErrExit("apertura file fallita\n");
                 }
 
                 //conto numero di caratteri e li storo
                 if((numChar = read(fd, caratteri, MAX)) == -1) {
-                    ErrExit("lettura file fallita");
+                    ErrExit("lettura file fallita\n");
                 }
 
                 caratteri[numChar] = '\0'; //aggiungo carattere di terminazione
@@ -230,18 +230,18 @@ int main(int argc, char * argv[]) {
                 
                     case 0 : 
                             if (write(FIFO1id, &messaggio1, sizeof(messaggio1)) != sizeof(messaggio1)){
-                                ErrExit("write failed");
+                                ErrExit("write failed\n");
                             } 
-                            printf("messaggio scritto su fifo1");
+                            printf("messaggio scritto su fifo1\n");
                          
                             semOp(sem, 2 , -1);  
                             break ;
                     
                     case 1 :
                             if (write(FIFO2id, &messaggio2, sizeof(messaggio2)) != sizeof(messaggio2)){
-                                ErrExit("write failed");
+                                ErrExit("write failed\n");
                             }
-                            printf("messaggio scritto su fifo2");
+                            printf("messaggio scritto su fifo2\n");
                            
                             semOp(sem, 3, -1);
                             
@@ -254,7 +254,7 @@ int main(int argc, char * argv[]) {
                             strcpy(ptr_shm ->parte_da_inviare, messaggio3.parte_da_inviare);
                             ptr_shm->parte=messaggio3.parte;
                             ptr_shm->pid_mittente = messaggio3.pid_mittente;                      
-                            printf("messaggio scritto su shared_memory");
+                            printf("messaggio scritto su shared_memory\n");
                           
                             semOp(sem, 4 , -1);
                         break;
@@ -265,12 +265,12 @@ int main(int argc, char * argv[]) {
                             if(msgsnd(mesgid , &messaggio4 , mSize , IPC_NOWAIT) == -1) //non si deve bloccare
                                 ErrExit("msgsnd failed");
 
-                            printf("messaggio scritto su message queue");
+                            printf("messaggio scritto su message queue\n");
                          
                             semOp(sem, 5, -1);
                         break ;
                     default:
-                            ErrExit("qualcosa è andato storto nello switch");
+                            ErrExit("qualcosa è andato storto nello switch\n");
                         break;
                 }
             }
@@ -284,11 +284,11 @@ int main(int argc, char * argv[]) {
 
         struct terminato termina; //
     
-        printf("Messaggio di conferma message queue : ");
+        printf("Messaggio di conferma message queue: \n");
         int size = sizeof(termina) - sizeof(long);
 
         if(msgrcv(mesgid, &termina, size, count , 0) == -1){ //si blocca così non mettiamo semafori per aspettare il client
-            ErrExit("ricezione messaggio message queue non riuscita");
+            ErrExit("ricezione messaggio message queue non riuscita\n");
         }
 
       //rimozione shared_memory
