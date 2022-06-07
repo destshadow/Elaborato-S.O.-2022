@@ -44,7 +44,7 @@ void sigHandler(int sig){
 int main(int argc, char * argv[]) {
   
     if(argc < 1) {
-       printf("Errore non hai passato un path\n");
+        printf("Errore non hai passato un path\n");
         return 0;
     }
     char *PathToSet = argv[1]; //PathToSet è il path passato dall'utente;
@@ -57,10 +57,12 @@ int main(int argc, char * argv[]) {
         if(signal(SIGUSR1, sigHandler) == SIG_ERR || signal(SIGINT, sigHandler) == SIG_ERR) {
             ErrExit("Cambio del gestore fallito\n");
         }
-   
+
+        if(pause() == -1){
             // Blocca tutti i segnali compresi SIGINT e SIGUSR1
-        if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
-            ErrExit("sigprocmask fallito\n");
+            if(sigprocmask(SIG_SETMASK, &mySet, NULL) == -1) {
+                ErrExit("sigprocmask fallito\n");
+            }
         }
 
         //spostamento path indicato
@@ -69,7 +71,7 @@ int main(int argc, char * argv[]) {
         }
 
         char *pwd = getcwd(NULL,0);
-        printf("Ciao %s, ora inizio l’invio dei file contenuti in %s\n", getenv("USER"), pwd);
+        printf("\nCiao %s, ora inizio l’invio dei file contenuti in %s\n", getenv("USER"), pwd);
    
         char *nomi[100]; //memorizza il path dei file
         //conta il numero di file presenti
@@ -117,7 +119,7 @@ int main(int argc, char * argv[]) {
         int FIFO2id = open(pathnameFIFO2, O_WRONLY|O_NONBLOCK);
 
         if(FIFO2id == -1)
-        ErrExit("errore apertura FIFO2\n");
+            ErrExit("errore apertura FIFO2\n");
     
         int mesgid = msgget(msgKey, S_IRUSR | S_IWUSR);
         if (mesgid == -1)
@@ -230,7 +232,7 @@ int main(int argc, char * argv[]) {
                 
                     case 0 : 
                             if (write(FIFO1id, &messaggio1, sizeof(messaggio1)) != sizeof(messaggio1)){
-                                ErrExit("write failed\n");
+                                ErrExit("write failed");
                             } 
                             printf("messaggio scritto su fifo1\n");
                          
@@ -239,7 +241,7 @@ int main(int argc, char * argv[]) {
                     
                     case 1 :
                             if (write(FIFO2id, &messaggio2, sizeof(messaggio2)) != sizeof(messaggio2)){
-                                ErrExit("write failed\n");
+                                ErrExit("write failed");
                             }
                             printf("messaggio scritto su fifo2\n");
                            
@@ -270,13 +272,13 @@ int main(int argc, char * argv[]) {
                             semOp(sem, 5, -1);
                         break ;
                     default:
-                            ErrExit("qualcosa è andato storto nello switch\n");
+                            ErrExit("qualcosa è andato storto nello switch");
                         break;
                 }
             }
             close(fd); //chiudo il file descriptor
             semOp(sem,1,1); // sblocca server invio messaggi fatto (avviso il server che ho scritto)
-            printf("chiuso"); //chiudo tutto 
+            //printf("chiuso"); //chiudo tutto 
             exit(0);
     }
 }             

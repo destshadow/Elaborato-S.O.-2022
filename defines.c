@@ -105,7 +105,7 @@ int ChangeDirAndGetEntry(int num, char *old_path, char **nomi) {
     }
   
   	if(num <= 0 || num >100){
-		printf("ci sono %d messaggi" ,num);
+		printf("ci sono %d messaggi\n" ,num);
 		ErrExit("non ci sono file o ce ne sono più di 100");
     }
     return num;
@@ -196,7 +196,7 @@ void posiziona_messaggio(message_t *messaggio, int count,int num_file, int c[]){
               	c[i]++; //incremento una parte dell'array
             break;
        	default:
-            	printf("qualcosa non è andato a buon fine");
+            	printf("qualcosa non è andato a buon fine\n");
             break;
    	}
 
@@ -251,26 +251,26 @@ void stampa_su_file (message_t fifo1[], message_t fifo2[],message_t shared[],mes
          
         	case 0: 
 					scrivi(buffer, k, fifo1,index, "fifo1"); 
-					numWrite = write(fd, buffer,sizeof(buffer));
-					if(numWrite != sizeof(buffer))
+					numWrite = write(fd, buffer,strlen(buffer));
+					if(numWrite != strlen(buffer))
 						ErrExit("write failed");
          		break;
          	case 1:
 					scrivi(buffer,k, fifo2,index,"fifo2"); 
-					numWrite = write(fd, buffer,sizeof(buffer));
-					if(numWrite != sizeof(buffer))
+					numWrite = write(fd, buffer,strlen(buffer));
+					if(numWrite != strlen(buffer))
 						ErrExit("write failed");
          		break;
          	case 2: 
 					scrivi(buffer,k, shared,index,"shared_memory"); 
-					numWrite = write(fd, buffer,sizeof(buffer));
-					if(numWrite != sizeof(buffer))
+					numWrite = write(fd, buffer,strlen(buffer));
+					if(numWrite != strlen(buffer))
 						ErrExit("write failed");
          		break;
          	case 3: 
 					scrivi(buffer, k, message,index,"message_queue"); 
-					numWrite = write(fd, buffer,sizeof(buffer));
-					if(numWrite != sizeof(buffer))
+					numWrite = write(fd, buffer,strlen(buffer));
+					if(numWrite != strlen(buffer))
 						ErrExit("write failed");
          		break;
         }
